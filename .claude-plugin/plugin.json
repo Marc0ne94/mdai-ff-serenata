@@ -16,5 +16,9 @@
     "mod"
   ],
   "icon": "./assets/icon.png",
+  "documentationUrl": "https://github.com/Marc0ne94/mdai-serenata#readme",
+  "supportUrl": "https://github.com/Marc0ne94/mdai-serenata/issues",
+  "privacyPolicyUrl": "https://github.com/Marc0ne94/mdai-serenata/blob/main/PRIVACY.md",
+  "termsOfServiceUrl": "https://github.com/Marc0ne94/mdai-serenata/blob/main/LICENSE",
   "types": "./types/index.d.ts"
 }
