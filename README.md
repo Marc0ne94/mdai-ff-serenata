@@ -11,6 +11,16 @@ cantante canta e, mentre la canzone va, una rosa cresce e sboccia.
 Musica, voce e grafica sono generate dal codice di questo repository: la voce è
 costruita da zero con la sintesi a formanti, senza voci di sistema.
 
+## Dove funziona
+
+| | App desktop di Claude Code | Claude Code nel terminale |
+|---|---|---|
+| Palco animato | ✅ | una riga con i pulsanti |
+| `/serenata` e `/canta` | ✅ | ✅ |
+| Musica | macOS, Windows | macOS, Windows |
+
+Su Linux funziona tutto tranne la musica.
+
 ## Installazione
 
 Da una shell (Terminale su Mac, PowerShell su Windows):
@@ -27,10 +37,6 @@ Nell'app desktop: clicca **+** accanto alla casella del prompt, poi **Plugins**,
 **Add marketplace** con `Marc0ne94/mdai-serenata`, poi **Add plugin**.
 
 Poi chiudi e riapri Claude Code (su Mac con ⌘Q).
-
-Finché il repository è privato, l'installazione funziona solo per chi può
-leggerlo su GitHub e ha già le credenziali git per github.com su quel computer
-(per esempio `gh auth login` e poi `gh auth setup-git`).
 
 ## Aggiornamento
 
@@ -51,9 +57,6 @@ poi chiudi e riapri Claude Code.
 - `/serenata on` accende la band sopra il prompt, `/serenata off` la spegne (la scelta resta per le sessioni successive)
 - `/canta` fa partire la canzone, e accende la band se era spenta
 - nella band: **▶ Canta**, **▶ Ancora**, **■ Stop**
-
-Il palco disegnato si vede nell'app desktop di Claude Code; nel terminale la band
-è una riga con i pulsanti. L'audio usa il lettore di macOS e, su Windows, quello di sistema tramite PowerShell.
 
 ## Disinstallazione
 
