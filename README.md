@@ -60,12 +60,24 @@ Then quit and reopen Claude Code.
 
 ## What it does on your computer
 
-- Plays the song bundled with the mod: on macOS through Claude Code's own audio
-  player, on Windows by starting `powershell.exe` with the system media player.
-  Stop, Again and quitting end the playback.
-- Draws the stage in the band above the prompt.
-- Remembers one setting, whether the band is on, in Claude Code's plugin storage.
-- Makes no network requests and sends no data anywhere.
+- **Plays the song bundled with the mod**, `audio/canzone.m4a`, and nothing else.
+  - On macOS it uses Claude Code's own audio player.
+  - On Windows Claude Code has no audio player, so the mod starts one program,
+    `powershell.exe`, with a short fixed script written in `hooks/register.tsx`.
+    The script opens the song file with Windows' built-in media player
+    (`System.Windows.Media.MediaPlayer`) and prints a dot every 200 ms while it
+    plays, so the stage can start in time with the music. The only variable part
+    of the script is the path of the song file inside the plugin's own folder.
+    Stop, Again and quitting end that process.
+- **Draws the stage** in the band above the prompt, and registers the two
+  commands `/serenata` and `/canta`.
+- **Remembers one setting**, whether the band is on, in Claude Code's plugin storage.
+- **Reads no other files, makes no network requests and sends no data anywhere.**
+
+Its hooks: `session.start` registers the commands and resets the band,
+`session.end` stops the music, `command.run` answers only its own two commands,
+and `ui.render` draws the band above the prompt. It doesn't read or change your
+prompts, Claude's replies, tool calls or other plugins.
 
 ## Uninstall
 
