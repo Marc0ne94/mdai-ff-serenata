@@ -1,5 +1,13 @@
 {
-  "name": "serenata",
-  "owner": { "name": "Marc0ne94" },
-  "plugins": [{ "name": "serenata", "source": "./" }]
+  "name": "mdai-serenata",
+  "description": "Serenata: a pixel-art band of Claudes for Claude Code",
+  "owner": {
+    "name": "Marc0ne94"
+  },
+  "plugins": [
+    {
+      "name": "serenata",
+      "source": "./"
+    }
+  ]
 }

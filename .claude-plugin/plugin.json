@@ -1,7 +1,20 @@
 {
   "name": "serenata",
-  "version": "0.1.6",
-  "icon": "./assets/mascotte-pixel.png",
-  "description": "Claude canta una dedica e fa sbocciare una rosa",
+  "displayName": "Serenata",
+  "version": "0.1.7",
+  "description": "A pixel-art band of Claudes plays above your prompt while a rose blooms",
+  "author": {
+    "name": "Marco Dall'Olio"
+  },
+  "homepage": "https://github.com/Marc0ne94/mdai-serenata",
+  "repository": "https://github.com/Marc0ne94/mdai-serenata",
+  "license": "MIT",
+  "keywords": [
+    "fun",
+    "music",
+    "pixel-art",
+    "mod"
+  ],
+  "icon": "./assets/icon.png",
   "types": "./types/index.d.ts"
 }
