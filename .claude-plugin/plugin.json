@@ -1,0 +1,7 @@
+{
+  "name": "serenata",
+  "version": "0.1.6",
+  "icon": "./assets/mascotte-pixel.png",
+  "description": "Claude canta una dedica e fa sbocciare una rosa",
+  "types": "./types/index.d.ts"
+}
