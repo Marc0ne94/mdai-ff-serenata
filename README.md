@@ -26,7 +26,7 @@ does nothing in claude.ai chat or in Cowork.
 From a shell (Terminal on macOS, PowerShell on Windows):
 
 ```bash
-claude plugin marketplace add Marc0ne94/mdai-serenata
+claude plugin marketplace add Marc0ne94/mdai-ff-serenata
 ```
 
 ```bash
@@ -34,7 +34,7 @@ claude plugin install serenata@mdai-serenata
 ```
 
 In the desktop app: click **+** next to the prompt box, then **Plugins**,
-**Add marketplace** with `Marc0ne94/mdai-serenata`, then **Add plugin**.
+**Add marketplace** with `Marc0ne94/mdai-ff-serenata`, then **Add plugin**.
 
 Then quit and reopen Claude Code (⌘Q on macOS).
 

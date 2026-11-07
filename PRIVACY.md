@@ -9,4 +9,4 @@ Serenata collects no data.
 
 To remove that setting, uninstall the plugin (see the README).
 
-Questions: open an issue at https://github.com/Marc0ne94/mdai-serenata/issues
+Questions: open an issue at https://github.com/Marc0ne94/mdai-ff-serenata/issues
