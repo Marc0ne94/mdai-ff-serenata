@@ -62,8 +62,10 @@ Then quit and reopen Claude Code.
 - in the band: **▶ Canta**, **▶ Ancora** (again), **■ Stop**, the **Raccolta** menu
   (*La band*, *HANA*: songs of the SAP world, *Odissea*: songs of the ancient world and of its philosophers,
   *MDO*: the Serenata's own love story, on an evening of its own,
-  or *Carica*: songs that give a charge, hardcore techno at a rave: *Centottanta*, *Cutover* (the night a system goes live, at 190)
-  and *Venerdì* (Friday at six, happy hardcore that turns hard halfway and explodes at the end))
+  or *Carica*: songs that give a charge, hardcore techno at a rave: *Centottanta*, *Cutover* (the night a system goes live, at 190),
+  *Venerdì* (Friday at six, happy hardcore that turns hard halfway and explodes at the end)
+  and *Fable 5.2* (for the day Claude Fable 5.2 came out, told as a fable at 200, the band dancing in the drops;
+  the song a new install starts on))
   and the **Canzone** menu with the songs of that collection; picking one while
   the band plays starts it at once (once a song has ended, it waits for Canta)
 - at the right of the band, **⚙ Impostazioni** shows the settings of the song:

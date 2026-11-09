@@ -6,7 +6,7 @@ import { SCENERIES } from '../hooks/sets'
 import { flight } from '../hooks/sets/codice'
 import { PROFILES, STYLES } from '../tools/profiles.mjs'
 import type { Song } from '../hooks/song'
-import { ambienceOf, assetOf, hasSettings, partsOf, sectionsOf, SONGS, songsIn, SOUND_PROFILES, soundOf, soundsOf, VOICE_STYLES, voiceOf, voicesOf } from '../hooks/song'
+import { ambienceOf, assetOf, hasSettings, partsOf, sectionsOf, songOf, SONGS, songsIn, SOUND_PROFILES, soundOf, soundsOf, VOICE_STYLES, voiceOf, voicesOf } from '../hooks/song'
 
 const BAND = {
   plugin: 'serenata',
@@ -40,7 +40,7 @@ test('Canta in the band plays the song and draws the stage', async ($, on) => {
   // On Windows the song plays through PowerShell's media player instead.
   on('process.spawn', async function* (_, e) {
     const command = e.argv.join(' ')
-    if (command.includes('MediaPlayer') && command.includes('canzone.m4a')) played.push('audio/canzone.m4a')
+    if (command.includes('MediaPlayer') && command.includes('fable.m4a')) played.push('audio/fable.m4a')
 
     return { value: { code: 0, signal: null } }
   })
@@ -54,7 +54,8 @@ test('Canta in the band plays the song and draws the stage', async ($, on) => {
   await clock.advance(1000)
   expect(played).toEqual([])
   await clock.advance(300)
-  expect(played).toEqual(['audio/canzone.m4a'])
+  // A new install starts on the newest song, Fable 5.2.
+  expect(played).toEqual(['audio/fable.m4a'])
 
   const stage = String(await stageOf())
   expect(stage).toContain('<!-- run 2200 -->')
@@ -141,11 +142,11 @@ test('the menus list the collections and the songs of the picked one, beside Can
   const collection = await ui.find({ key: 'collection' })
   expect(collection?.type).toBe('Select')
   expect((collection?.props.options as { value: string }[]).map(o => o.value)).toEqual(['band', 'hana', 'odissea', 'mdo', 'carica'])
-  expect(collection?.props.value).toBe('band')
+  expect(collection?.props.value).toBe('carica')
   const quiet = await ui.find({ key: 'song' })
   expect(quiet?.type).toBe('Select')
-  expect((quiet?.props.options as { value: string }[]).map(o => o.value)).toEqual(['serenata', 'canzone-2', 'canzone-3'])
-  expect(quiet?.props.value).toBe('serenata')
+  expect((quiet?.props.options as { value: string }[]).map(o => o.value)).toEqual(['centottanta', 'cutover', 'venerdi', 'fable'])
+  expect(quiet?.props.value).toBe('fable')
 
   await ui.press({ key: 'sing' })
   await clock.advance(1300)
@@ -167,16 +168,16 @@ test('picking a song while the band plays starts it from the beginning', async (
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   await ui.press({ key: 'sing' })
   await clock.advance(1300)
-  expect(await songOnStage(ui)).toBe('serenata')
+  expect(await songOnStage(ui)).toBe('fable')
 
-  await ui.select({ key: 'song', value: 'canzone-2' })
+  await ui.select({ key: 'song', value: 'cutover' })
   // The old stage goes at once, the new one comes with its audio.
   expect(await songOnStage(ui)).toBeUndefined()
   await clock.advance(200)
-  expect(await songOnStage(ui)).toBe('canzone-2')
+  expect(await songOnStage(ui)).toBe('cutover')
   expect(played).toHaveLength(2)
-  expect((await ui.find({ key: 'song' }))?.props.value).toBe('canzone-2')
-  expect(memory.songId).toBe('canzone-2')
+  expect((await ui.find({ key: 'song' }))?.props.value).toBe('cutover')
+  expect(memory.songId).toBe('cutover')
   await ui.unmount()
 })
 
@@ -191,16 +192,16 @@ test('picking a song while the band is quiet plays nothing', async ($, on) => {
   })
 
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  await ui.select({ key: 'song', value: 'canzone-3' })
+  await ui.select({ key: 'song', value: 'cutover' })
   await clock.advance(2000)
   expect(played).toEqual([])
   expect(await songOnStage(ui)).toBeUndefined()
-  expect((await ui.find({ key: 'song' }))?.props.value).toBe('canzone-3')
+  expect((await ui.find({ key: 'song' }))?.props.value).toBe('cutover')
 
   // Canta then plays the picked song.
   await ui.press({ key: 'sing' })
   await clock.advance(1300)
-  expect(await songOnStage(ui)).toBe('canzone-3')
+  expect(await songOnStage(ui)).toBe('cutover')
   await ui.unmount()
 })
 
@@ -241,7 +242,7 @@ test('/canta picks a song by number or by name, and lists them for anything else
   await ui.unmount()
 })
 
-test('a session starts with the song picked last time, or the first if it is gone', async ($, on) => {
+test('a session starts with the song picked last time, or the newest if it is gone', async ($, on) => {
   mock.clock(on)
   const memory = storeIn(on, { songId: 'canzone-3' })
   on('session.start', (_, e) => ({ cwd: e.cwd }))
@@ -256,7 +257,7 @@ test('a session starts with the song picked last time, or the first if it is gon
   memory.songId = 'una-canzone-tolta'
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   const again = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect((await again.find({ key: 'song' }))?.props.value).toBe('serenata')
+  expect((await again.find({ key: 'song' }))?.props.value).toBe('fable')
   await again.unmount()
 })
 
@@ -375,10 +376,11 @@ test('the settings sit at the right, only for a song with a choice, and each son
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   const voice = async () => (await ui.find({ key: 'voice' }))?.props
 
-  // The Serenata has nothing to set: no settings at all.
+  // Fable 5.2, the first song of a new install, has nothing to set: no settings at all.
   expect(await ui.find({ key: 'settings' })).toBeUndefined()
 
-  // Go-live is sung in two styles: the settings are there, hidden until asked.
+  // Go-live, in the band, is sung in two styles: the settings are there, hidden until asked.
+  await ui.select({ key: 'collection', value: 'band' })
   await ui.select({ key: 'song', value: 'canzone-3' })
   expect(await ui.find({ key: 'voice' })).toBeUndefined()
   expect((await ui.find({ key: 'settings' }))?.props.label).toBe('⚙ Impostazioni')
@@ -457,6 +459,7 @@ test('the terminal band has the collections and the settings too', async ($, on)
 
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect((await ui.find({ key: 'collection' }))?.type).toBe('Select')
+  await ui.select({ key: 'collection', value: 'band' })
   await ui.select({ key: 'song', value: 'canzone-3' })
   await ui.press({ key: 'settings' })
   expect((await ui.find({ key: 'voice' }))?.type).toBe('Select')
@@ -476,6 +479,7 @@ test('picking a collection plays its song picked last, or its first', async ($, 
   const options = async () => ((await ui.find({ key: 'song' }))?.props.options as { value: string }[]).map(o => o.value)
 
   // Go-live in the band, then to Odissea: its first song, and only its songs in the menu.
+  await ui.select({ key: 'collection', value: 'band' })
   await ui.select({ key: 'song', value: 'canzone-3' })
   await ui.press({ key: 'sing' })
   await clock.advance(1300)
@@ -582,6 +586,7 @@ test('a song that ends by itself leaves the band quiet: picking a song then play
   mock.store(on)
   const plays = player(on)
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.select({ key: 'collection', value: 'band' })
   await ui.press({ key: 'sing' })
   await clock.advance(1300)
   expect(plays).toHaveLength(1)
@@ -791,8 +796,8 @@ test('Centottanta has a form of its own: two verses, a roll and a breakdown, thr
   for (const other of SONGS) expect(other.sections === undefined).toBe(other.collection !== 'carica')
 })
 
-test('Carica has three songs: Centottanta, Cutover at 190, and Venerdì played happy', () => {
-  expect(songsIn('carica').map(s => s.id)).toEqual(['centottanta', 'cutover', 'venerdi'])
+test('Carica has four songs: Centottanta, Cutover at 190, Venerdì played happy, and Fable 5.2', () => {
+  expect(songsIn('carica').map(s => s.id)).toEqual(['centottanta', 'cutover', 'venerdi', 'fable'])
   const cutover = SONGS.find(s => s.id === 'cutover')!
   const venerdi = SONGS.find(s => s.id === 'venerdi')!
   expect(Math.round(60 / (cutover.pulse ?? 1))).toBe(190)
@@ -822,4 +827,25 @@ test('Carica has three songs: Centottanta, Cutover at 190, and Venerdì played h
   expect(friday.match(/values="6;1;6"/g)?.length).toBe(36)
   expect(friday).toContain(`begin="${last.start.toFixed(2)}s" fill="freeze"/>`)
   for (const stage of [night, friday]) expect(stage.length).toBeLessThan(131072)
+})
+
+test('Fable 5.2 is what a new install starts on, at 200, the band dancing in its drops', () => {
+  const fable = songOf(null)
+  expect(fable.id).toBe('fable')
+  expect(songOf('una-canzone-tolta').id).toBe('fable')
+  expect(Math.round(60 / (fable.pulse ?? 1))).toBe(200)
+  expect(soundsOf(fable)).toEqual(['rave'])
+  expect(voicesOf(fable, 'rave')).toEqual(['avanzato'])
+  const stage = band(1, fable)
+  expect(stage.length).toBeLessThan(131072)
+  // The book closed until the first drop, the version from 5.1 to 5.2.
+  const first = partsOf(fable, 'drop')[0]!
+  expect(stage).toContain('>5.1<')
+  expect(stage).toContain('>5.2<')
+  expect(stage).toContain(`<set attributeName="visibility" to="hidden" begin="${first.start.toFixed(2)}s" fill="freeze"/>`)
+  // Four Claudes jump in the drops and wiggle in the last; in no other song.
+  const last = partsOf(fable, 'drop').at(-1)!
+  expect(stage.match(/values="0 0;-0.5 -1.5;0 0;0.5 -1.5"/g)?.length).toBe(4)
+  expect(stage.match(new RegExp(`values="-8 4 8;8 4 8" dur="[0-9.]+s" begin="${last.start.toFixed(2)}s"`, 'g'))?.length).toBe(4)
+  for (const other of SONGS.filter(s => s.id !== 'fable')) expect(band(1, other)).not.toContain('-0.5 -1.5')
 })

@@ -1,6 +1,7 @@
 import { AUDIO as CENTOTTANTA_AUDIO, TIMING as CENTOTTANTA_TIMING } from './songs/centottanta'
 import { AUDIO as CUTOVER_AUDIO, TIMING as CUTOVER_TIMING } from './songs/cutover'
 import { AUDIO as DIPENDE_DA_ME_AUDIO, TIMING as DIPENDE_DA_ME_TIMING } from './songs/dipende-da-me'
+import { AUDIO as FABLE_AUDIO, TIMING as FABLE_TIMING } from './songs/fable'
 import { AUDIO as GO_LIVE_AUDIO, TIMING as GO_LIVE_TIMING } from './songs/go-live'
 import { AUDIO as HANA_DI_NOTTE_AUDIO, TIMING as HANA_DI_NOTTE_TIMING } from './songs/hana-di-notte'
 import { AUDIO as IN_PRINCIPIO_AUDIO, TIMING as IN_PRINCIPIO_TIMING } from './songs/in-principio'
@@ -94,7 +95,7 @@ export const COLLECTIONS: readonly { id: CollectionId; label: string; ambience: 
 ]
 
 // The sceneries of hooks/sets, by name.
-export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio' | 'batteria' | 'cutover' | 'venerdi'
+export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio' | 'batteria' | 'cutover' | 'venerdi' | 'favola'
 
 export type Song = Timing & {
   // Its address in the menus, in /canta and in the store: short, never reused.
@@ -108,7 +109,14 @@ export type Song = Timing & {
   audio: Sounds
   // Where its words come from, when they follow a text: author, work, passage.
   source?: string
+  // Whether the band dances in its drops: jumping and swaying on the beat,
+  // wiggling in the last drop; else it only bobs, as in every song.
+  dance?: boolean
 }
+
+// The song for the day Claude Fable 5.2 came out, told as a fable, the band
+// dancing: the one a new install starts on.
+const FABLE: Song = { id: 'fable', title: 'Fable 5.2', collection: 'carica', scenery: 'favola', audio: FABLE_AUDIO, dance: true, ...FABLE_TIMING }
 
 // The first song, written for the mod.
 const SERENATA: Song = { id: 'serenata', title: 'Serenata', collection: 'band', scenery: 'rosa', audio: SERENATA_AUDIO, ...SERENATA_TIMING }
@@ -163,11 +171,13 @@ export const SONGS: readonly Song[] = [
   // The night a system goes live, at 190; and Friday at six, happy hardcore.
   { id: 'cutover', title: 'Cutover', collection: 'carica', scenery: 'cutover', audio: CUTOVER_AUDIO, ...CUTOVER_TIMING },
   { id: 'venerdi', title: 'Venerdì', collection: 'carica', scenery: 'venerdi', audio: VENERDI_AUDIO, ...VENERDI_TIMING },
+  FABLE,
 ]
 
-// The song with this id, or the first one when no song has it any more.
+// The song with this id; when none is picked yet (a new install) or no song
+// has it any more, the newest, for Fable 5.2.
 export function songOf(id: string | null | undefined): Song {
-  return SONGS.find(song => song.id === id) ?? SERENATA
+  return SONGS.find(song => song.id === id) ?? FABLE
 }
 
 // The ambience a song is played in: its collection's.

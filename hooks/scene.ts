@@ -1,5 +1,5 @@
 import { AMBIENCES } from './ambiences'
-import { box, FONT, GOLD, HEIGHT, n1, NEON, ORANGE, random, sec, shift, SKIN, toggle, WIDTH } from './draw'
+import { box, dropLights, FONT, GOLD, HEIGHT, n1, NEON, ORANGE, random, sec, shift, SKIN, toggle, WIDTH } from './draw'
 import type { Ambience, Scenery } from './draw'
 import { SCENERIES } from './sets'
 import type { Song } from './song'
@@ -133,19 +133,41 @@ type Member = {
   hop?: { dur: number; begin: number; end: number }
 }
 
+// How the band dances in a song that asks for it (`dance`), in cells: in the
+// drops a jump on every off-beat, to the left and to the right in turn; in
+// the last drop, when there are more, the hips besides, tilting from the feet
+// one way and the other on every beat.
+function dance() {
+  const { SONG, PULSE: beat } = tuned()
+  if (!SONG.dance) return { jump: '', wiggle: '' }
+  const lit = dropLights(SONG)
+  const drops = partsOf(SONG, 'drop')
+  const last = drops.length > 1 ? drops.at(-1) : undefined
+  return {
+    jump: `<animateTransform attributeName="transform" type="translate" values="0 0;-0.5 -1.5;0 0;0.5 -1.5" dur="${sec(2 * beat)}" begin="${lit.on}" end="${lit.off}" calcMode="discrete" repeatCount="indefinite"/>`,
+    wiggle:
+      last === undefined
+        ? ''
+        : `<animateTransform attributeName="transform" type="rotate" values="-8 4 8;8 4 8" dur="${sec(2 * beat)}" begin="${sec(last.start)}" end="${sec(last.end)}" calcMode="discrete" repeatCount="indefinite"/>`,
+  }
+}
+
 // One Claude in cells of `u` pixels: an 8×6 body, four legs below it, and
 // arms on rows 2–3 unless the member brings its own; `front` is drawn over
-// it in the same cells (an instrument, a hand).
+// it in the same cells (an instrument, a hand). It dances when its song does.
 function member({ cx, feet, u, blink, arms, front, face, hop }: Member) {
   const { AMBIENCE } = tuned()
   const eye = (x: number) =>
     `<rect x="${x}" y="1" width="1" height="1" fill="#000"><animate attributeName="height" values="1;1;0.25;1" keyTimes="0;0.93;0.96;1" dur="4.3s" begin="${sec(blink)}" repeatCount="indefinite"/><animate attributeName="y" values="1;1;1.375;1" keyTimes="0;0.93;0.96;1" dur="4.3s" begin="${sec(blink)}" repeatCount="indefinite"/></rect>`
   const legs = [0, 2, 5, 7].map(x => box(x, 6, 1, 2, ORANGE)).join('')
   const motion = hop ? shift('0 0;0 -0.5', hop.dur, hop.begin, hop.end) : ''
-  return `<ellipse cx="${cx}" cy="${feet}" rx="${6 * u}" ry="${u * 0.5}" fill="#000" opacity="0.3"/>
-<g transform="translate(${cx - 4 * u} ${feet - 8 * u}) scale(${u})" shape-rendering="crispEdges"><g>${motion}
+  const body = `<g>${motion}
 ${box(0, 0, 8, 6, ORANGE)}${arms ?? box(-2, 2, 2, 2, ORANGE) + box(8, 2, 2, 2, ORANGE)}${legs}${eye(1)}${eye(6)}${face ?? ''}${front ?? ''}${AMBIENCE.crown ?? ''}
-</g></g>`
+</g>`
+  const { jump, wiggle } = dance()
+  const danced = jump ? `<g>${jump}<g>${wiggle}${body}</g></g>` : body
+  return `<ellipse cx="${cx}" cy="${feet}" rx="${6 * u}" ry="${u * 0.5}" fill="#000" opacity="0.3"/>
+<g transform="translate(${cx - 4 * u} ${feet - 8 * u}) scale(${u})" shape-rendering="crispEdges">${danced}</g>`
 }
 
 // How far the singer's mouth opens over the whole clip, 0 to 1.
