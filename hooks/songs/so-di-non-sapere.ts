@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/so-di-non-sapere.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built 2fe863fb36329c74c290c18493f782ae9171fdcf9cf9a2b2e83d43496a56f3c2
+// built 537c2de044577b9223eedb8d8d07028723d7b5ec56b74ffefd12f674d6e5207a
 // source audio/so-di-non-sapere.m4a 17fb60ee07c58836049d44987789068f103f7e7394efcbbbea393783faf29e0e e1db37ac77d496d1670c20457a0a1f22e1ffa1a2fcbc50832eb939b1fe1d4bab
 // source audio/so-di-non-sapere-avanzato.m4a 2523831a55906b6e79489a52b7c82cbcfdc75e99cc1592be09b9601abe85e631 822e1fbcbfa062f8080661627e6a64c0d250e62285db29570bf5020b981807f5
 // source audio/so-di-non-sapere-dita.m4a e46e03b08745d33756f7a894f1ad9ca83f873283ced367b680d501c156039b83 6f686c95b7506250ba8fc6e1643d171157f2838a1231e8b681227255e16b2412

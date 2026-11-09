@@ -6,7 +6,7 @@ import { SCENERIES } from '../hooks/sets'
 import { flight } from '../hooks/sets/codice'
 import { PROFILES, STYLES } from '../tools/profiles.mjs'
 import type { Song } from '../hooks/song'
-import { ambienceOf, assetOf, hasSettings, SONGS, songsIn, SOUND_PROFILES, soundOf, soundsOf, VOICE_STYLES, voiceOf, voicesOf } from '../hooks/song'
+import { ambienceOf, assetOf, hasSettings, partsOf, sectionsOf, SONGS, songsIn, SOUND_PROFILES, soundOf, soundsOf, VOICE_STYLES, voiceOf, voicesOf } from '../hooks/song'
 
 const BAND = {
   plugin: 'serenata',
@@ -140,7 +140,7 @@ test('the menus list the collections and the songs of the picked one, beside Can
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   const collection = await ui.find({ key: 'collection' })
   expect(collection?.type).toBe('Select')
-  expect((collection?.props.options as { value: string }[]).map(o => o.value)).toEqual(['band', 'hana', 'odissea', 'mdo'])
+  expect((collection?.props.options as { value: string }[]).map(o => o.value)).toEqual(['band', 'hana', 'odissea', 'mdo', 'carica'])
   expect(collection?.props.value).toBe('band')
   const quiet = await ui.find({ key: 'song' })
   expect(quiet?.type).toBe('Select')
@@ -285,13 +285,34 @@ test('every song keeps the form the stage follows', () => {
       for (const voice of voicesOf(song, sound)) expect(assetOf(song, sound, voice)).toMatch(/^audio\/[a-z0-9-]+\.m4a$/)
     }
     expect(near(song.bar, 4 * song.beat)).toBe(true)
-    // Six lines of two bars from bar 2; the rose blooms at the 4th, the finale at the 5th.
-    expect(song.lines).toHaveLength(6)
-    song.lines.forEach((line, i) => expect(near(line.start, (2 + 2 * i) * song.bar)).toBe(true))
-    expect(song.bloomAt).toBe(song.lines[3]?.start)
-    expect(song.finaleAt).toBe(song.lines[4]?.start)
-    expect(near(song.outroAt, 14 * song.bar)).toBe(true)
-    expect(song.duration).toBeGreaterThan(song.outroAt)
+    // Its sections one after the other, whole bars, from the intro to the outro, with a drop.
+    const sections = sectionsOf(song)
+    expect(sections[0]?.part).toBe('intro')
+    expect(sections.at(-1)?.part).toBe('outro')
+    expect(sections.filter(s => s.part === 'intro' || s.part === 'outro')).toHaveLength(2)
+    expect(partsOf(song, 'drop').length).toBeGreaterThan(0)
+    sections.forEach((section, i) => {
+      expect(near(section.start, i === 0 ? 0 : (sections[i - 1]?.end ?? -1))).toBe(true)
+      expect(near(section.end / song.bar, Math.round(section.end / song.bar))).toBe(true)
+    })
+    expect(near(song.outroAt, sections.at(-1)?.start ?? -1)).toBe(true)
+    expect(song.duration).toBeGreaterThan(sections.at(-1)?.end ?? Infinity)
+    if (!song.sections) {
+      // The first form: six lines of two bars from bar 2, the outro at bar 14.
+      expect(song.lines).toHaveLength(6)
+      song.lines.forEach((line, i) => expect(near(line.start, (2 + 2 * i) * song.bar)).toBe(true))
+      expect(near(song.outroAt, 14 * song.bar)).toBe(true)
+    }
+    // The lines between the intro and the outro, none over another; the rose
+    // blooms at the last before the first drop, the finale at the first in it.
+    const firstDrop = partsOf(song, 'drop')[0]!
+    song.lines.forEach((line, i) => {
+      expect(line.start).toBeGreaterThanOrEqual((sections[0]?.end ?? 0) - 0.001)
+      expect(line.end).toBeLessThanOrEqual(song.outroAt + 0.001)
+      if (i > 0) expect(line.start).toBeGreaterThanOrEqual((song.lines[i - 1]?.end ?? 0) - 0.001)
+    })
+    expect(song.bloomAt).toBe(song.lines.filter(line => line.start < firstDrop.start - 0.001).at(-1)?.start)
+    expect(song.finaleAt).toBe(song.lines.find(line => line.start >= firstDrop.start - 0.001)?.start)
     for (const line of song.lines) {
       for (const syl of line.syls) {
         expect(syl.end).toBeGreaterThan(syl.start)
@@ -655,9 +676,9 @@ test('a band hidden in an earlier session stays hidden', async ($, on) => {
   await ui.unmount()
 })
 
-test('each album plays in its own ambience: the band in its club, HANA in a data center, Odissea in a temple, MDO on an evening of its own', () => {
+test('each album plays in its own ambience: the band in its club, HANA in a data center, Odissea in a temple, MDO on an evening of its own, Carica at a rave', () => {
   const stageOf = (id: string) => band(1, SONGS.find(song => song.id === id)!)
-  const expected = { band: 'club', hana: 'datacenter', odissea: 'antico', mdo: 'serata' } as const
+  const expected = { band: 'club', hana: 'datacenter', odissea: 'antico', mdo: 'serata', carica: 'rave' } as const
   for (const song of SONGS) expect(ambienceOf(song)).toBe(expected[song.collection])
   // The data center: its wall, teal beams, headsets; the band's own instruments.
   const hana = stageOf('hana-di-notte')
@@ -671,10 +692,13 @@ test('each album plays in its own ambience: the band in its club, HANA in a data
   expect(stageOf('serenata')).toContain('fill="#2e1f45"')
   // MDO's evening: wine walls, rose beams, flower crowns, a riser in the walls' wine.
   // In principio builds up its own way: bass at bar 6, a heartbeat from bar 8;
+  // so does Centottanta: the kick from the first bar, the acid line at bar 2;
   // every other song keeps the fixed form, and the stage follows each.
   const principio = SONGS.find(s => s.id === 'in-principio')!
   expect([principio.bassAt, principio.drumsAt]).toEqual([+(6 * principio.bar).toFixed(3), +(8 * principio.bar).toFixed(3)])
-  for (const song of SONGS.filter(s => s.id !== 'in-principio')) expect([song.bassAt, song.drumsAt]).toEqual([undefined, undefined])
+  const centottanta = SONGS.find(s => s.id === 'centottanta')!
+  expect([centottanta.bassAt, centottanta.drumsAt]).toEqual([+(2 * centottanta.bar).toFixed(3), 0])
+  for (const song of SONGS.filter(s => s.id !== 'in-principio' && s.collection !== 'carica')) expect([song.bassAt, song.drumsAt]).toEqual([undefined, undefined])
   const mdo = stageOf('in-principio')
   expect(mdo).toContain(`begin="${(principio.drumsAt ?? 0).toFixed(2)}s"`)
   expect(mdo).toContain('url(#serataWall)')
@@ -682,6 +706,15 @@ test('each album plays in its own ambience: the band in its club, HANA in a data
   expect(mdo).toContain('fill="#3a1426"')
   expect(mdo).not.toContain('url(#beamPurple)')
   expect(mdo.length).toBeLessThan(131072)
+  // The rave: its wall and green beams, dark glasses on the Claudes, a riser
+  // with a neon edge, and a crowd in front that takes no taps.
+  const rave = stageOf('centottanta')
+  expect(rave).toContain('url(#raveWall)')
+  expect(rave).toContain('url(#raveBeamGreen)')
+  expect(rave).toContain('fill="#9ffcff"')
+  expect(rave).toContain('fill="#14121c"')
+  expect(rave).not.toContain('url(#beamPurple)')
+  expect(rave.length).toBeLessThan(131072)
   // The club is drawn as it always was: its beams, its string of lights, its keyboard.
   for (const id of ['serenata', 'canzone-2', 'canzone-3']) {
     expect(stageOf(id)).toContain('url(#beamPurple)')
@@ -697,4 +730,96 @@ test('each album plays in its own ambience: the band in its club, HANA in a data
     expect(stage).toContain('#6f9a3f')
     expect(stage.length).toBeLessThan(131072)
   }
+})
+
+test('Centottanta is played in double time: the band and the stage move on every kick, twice a beat', () => {
+  const song = SONGS.find(s => s.id === 'centottanta')!
+  // Written at 90, played at 180: the form keeps its beat, the band plays half of it.
+  expect(song.bpm).toBe(90)
+  expect(near(song.pulse ?? 0, song.beat / 2)).toBe(true)
+  // Every song of Carica is played in double time, and no other.
+  for (const other of SONGS) expect(other.pulse === undefined).toBe(other.collection !== 'carica')
+  // Played by the rave band only, in the one voice its words need: nothing to set.
+  expect(soundsOf(song)).toEqual(['rave'])
+  expect(voicesOf(song, 'rave')).toEqual(['classico'])
+  expect(hasSettings(song, 'rave')).toBe(false)
+  const stage = band(1, song)
+  const pulse = (song.pulse ?? 0).toFixed(2)
+  // The singer hops on every kick from the acid line on, and the drum's head on every kick from the first.
+  expect(stage).toContain(`dur="${pulse}s" begin="${(song.bassAt ?? 0).toFixed(2)}s"`)
+  expect(stage).toContain(`keyTimes="0;0.15;0.5;0.5;0.65;1" dur="${(2 * (song.pulse ?? 0)).toFixed(2)}s" begin="0.00s"`)
+  // The battery charges to 100% at the first drop, 200% in the last; the
+  // speakers pump while the kick plays, out in the breaks.
+  expect(stage).toContain('180 BPM')
+  expect(stage).toContain('>100%<')
+  expect(stage).toContain('>200%<')
+  const kick = sectionsOf(song)
+    .filter(s => s.part !== 'break' && s.part !== 'outro')
+    .reduce<[number, number][]>((spans, s) => {
+      const last = spans.at(-1)
+      if (last && near(last[1], s.start)) last[1] = s.end
+      else spans.push([s.start, s.end])
+      return spans
+    }, [])
+  expect(kick).toHaveLength(3)
+  expect(stage).toContain(`begin="${kick.map(([b]) => b.toFixed(2) + 's').join(';')}" end="${kick.map(([, e]) => e.toFixed(2) + 's').join(';')}"`)
+  // POM! pops on each «pom» the voice sings.
+  const poms = song.lines.flatMap(line => line.syls.filter(s => /^pom/i.test(s.text)))
+  expect(poms).toHaveLength(15)
+  for (const pom of poms) expect(stage).toContain(`${pom.start.toFixed(2)}s`)
+})
+
+test('Centottanta has a form of its own: two verses, a roll and a breakdown, three drops, about a minute and a half', () => {
+  const song = SONGS.find(s => s.id === 'centottanta')!
+  expect(sectionsOf(song).map(s => s.part)).toEqual(['intro', 'verse', 'break', 'drop', 'verse', 'break', 'drop', 'drop', 'outro'])
+  expect(song.lines).toHaveLength(14)
+  expect(song.duration).toBeGreaterThan(85)
+  // The stage crashes where each drop starts and on the last bar of the last;
+  // the lasers light in each drop and go out in between, the last two drops,
+  // one after the other, lit as one.
+  const drops = partsOf(song, 'drop')
+  const stage = band(1, song)
+  expect(stage).toContain(`begin="${[...drops.map(d => d.start), drops[2]!.end - song.bar].map(t => t.toFixed(2) + 's').join(';')}"`)
+  expect(stage).toContain(`to="0.6" begin="${[drops[0]!.start, drops[1]!.start].map(t => t.toFixed(2) + 's').join(';')}"`)
+  expect(stage).toContain(`to="0" begin="${[drops[0]!.end, song.outroAt + 1].map(t => t.toFixed(2) + 's').join(';')}"`)
+  // The last drop is the biggest: the battery shakes, the cones and the crowd
+  // move twice as far, from its start to its end.
+  const last = drops[2]!
+  expect(stage).toContain(`values="0 0;-1.6 0.6;1.6 -0.6;0 0" dur="${(song.pulse ?? 0).toFixed(2)}s" begin="${last.start.toFixed(2)}s"`)
+  expect(stage).toContain(`values="1.24;1;1" keyTimes="0;0.4;1" dur="${(song.pulse ?? 0).toFixed(2)}s" begin="${last.start.toFixed(2)}s" end="${last.end.toFixed(2)}s"`)
+  // Every song but Carica's keeps the first form, as it always had.
+  for (const other of SONGS) expect(other.sections === undefined).toBe(other.collection !== 'carica')
+})
+
+test('Carica has three songs: Centottanta, Cutover at 190, and Venerdì played happy', () => {
+  expect(songsIn('carica').map(s => s.id)).toEqual(['centottanta', 'cutover', 'venerdi'])
+  const cutover = SONGS.find(s => s.id === 'cutover')!
+  const venerdi = SONGS.find(s => s.id === 'venerdi')!
+  expect(Math.round(60 / (cutover.pulse ?? 1))).toBe(190)
+  // Each in one sound and in the advanced voice only, which sings their v, b, g and z: nothing to set.
+  expect(soundsOf(cutover)).toEqual(['rave'])
+  expect(soundsOf(venerdi)).toEqual(['happy'])
+  for (const song of [cutover, venerdi]) {
+    expect(voicesOf(song, soundOf(song, undefined))).toEqual(['avanzato'])
+    expect(hasSettings(song, soundOf(song, undefined))).toBe(false)
+    expect(song.duration).toBeGreaterThan(75)
+  }
+  // Cutover: the import fails in the breaks and goes green in the drops, live in the last.
+  const night = band(1, cutover)
+  expect(night).toContain('>RC 8<')
+  expect(night).toContain('>RC 0 ✓<')
+  expect(night).toContain('>LIVE ✓<')
+  expect(night).toContain(`values="-32 300 470;38 300 470" dur="0.25s" begin="${partsOf(cutover, 'drop')[0]!.start.toFixed(2)}s"`)
+  // Venerdì: the clock strikes six at the first drop, then the weekend.
+  const friday = band(1, venerdi)
+  expect(friday).toContain('>17:58<')
+  expect(friday).toContain('>18:00<')
+  expect(friday).toContain('>WEEKEND!<')
+  // It explodes at its end: a last drop twice as long as the first, under confetti.
+  const [first, ...rest] = partsOf(venerdi, 'drop')
+  const last = rest.at(-1)!
+  expect(Math.abs(last.end - last.start - 2 * (first!.end - first!.start))).toBeLessThan(0.05)
+  expect(friday.match(/values="6;1;6"/g)?.length).toBe(36)
+  expect(friday).toContain(`begin="${last.start.toFixed(2)}s" fill="freeze"/>`)
+  for (const stage of [night, friday]) expect(stage.length).toBeLessThan(131072)
 })

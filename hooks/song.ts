@@ -1,3 +1,5 @@
+import { AUDIO as CENTOTTANTA_AUDIO, TIMING as CENTOTTANTA_TIMING } from './songs/centottanta'
+import { AUDIO as CUTOVER_AUDIO, TIMING as CUTOVER_TIMING } from './songs/cutover'
 import { AUDIO as DIPENDE_DA_ME_AUDIO, TIMING as DIPENDE_DA_ME_TIMING } from './songs/dipende-da-me'
 import { AUDIO as GO_LIVE_AUDIO, TIMING as GO_LIVE_TIMING } from './songs/go-live'
 import { AUDIO as HANA_DI_NOTTE_AUDIO, TIMING as HANA_DI_NOTTE_TIMING } from './songs/hana-di-notte'
@@ -7,16 +9,23 @@ import { AUDIO as SERENATA_AUDIO, TIMING as SERENATA_TIMING } from './songs/sere
 import { AUDIO as SO_DI_NON_SAPERE_AUDIO, TIMING as SO_DI_NON_SAPERE_TIMING } from './songs/so-di-non-sapere'
 import { AUDIO as TUTTO_PRONTO_AUDIO, TIMING as TUTTO_PRONTO_TIMING } from './songs/tutto-pronto'
 import { AUDIO as UN_ALTRO_ME_STESSO_AUDIO, TIMING as UN_ALTRO_ME_STESSO_TIMING } from './songs/un-altro-me-stesso'
+import { AUDIO as VENERDI_AUDIO, TIMING as VENERDI_TIMING } from './songs/venerdi'
 
 // The songs the band can play. Each one is a file of tools/songs, rendered by
 // tools/render.mjs into the audio of each pair of sound profile and voice style
 // it declares (audio/) and its timing (hooks/songs/): seconds from the start of
 // the clip, which the stage follows, the same in every pair.
 export type Syllable = { text: string; start: number; end: number; open: number }
+// The parts of a song's form, and its sections in seconds (see tools/synth.mjs).
+export type Part = 'intro' | 'verse' | 'break' | 'drop' | 'outro'
+export type Section = { part: Part; start: number; end: number }
 export type Line = { start: number; end: number; syls: Syllable[] }
 export type Timing = {
   bpm: number
   beat: number
+  // The beat the band plays and the stage moves to, for a song in double time
+  // (half a beat); absent, the beat.
+  pulse?: number
   bar: number
   duration: number
   outroAt: number
@@ -26,15 +35,34 @@ export type Timing = {
   // absent, the fixed form (bars 2 and 6).
   bassAt?: number
   drumsAt?: number
+  // The sections of a song with a form of its own; absent, the first form
+  // (see sectionsOf).
+  sections?: Section[]
   lines: Line[]
 }
+
+// A song's sections: its own, or the first form's, 16 bars: intro 2, verse 8,
+// drop 4 (the finale), outro 2.
+export function sectionsOf(song: Timing): Section[] {
+  if (song.sections) return song.sections
+  const { bar, outroAt } = song
+  return [
+    { part: 'intro', start: 0, end: 2 * bar },
+    { part: 'verse', start: 2 * bar, end: 10 * bar },
+    { part: 'drop', start: 10 * bar, end: outroAt },
+    { part: 'outro', start: outroAt, end: 16 * bar },
+  ]
+}
+
+// The sections of one part, in order.
+export const partsOf = (song: Timing, part: Part) => sectionsOf(song).filter(s => s.part === part)
 
 // The technical side of a song, picked per song in the band's settings: how it
 // is played (its sound profile, defined in tools/synth.mjs) and how it is sung
 // (its voice style). A song is rendered in the pairs its file in tools/songs
 // declares, and in no other: the menus offer exactly those, in this order.
 export type VoiceId = 'classico' | 'avanzato'
-export type SoundId = 'pop' | 'plettro' | 'dita'
+export type SoundId = 'pop' | 'plettro' | 'dita' | 'rave' | 'happy'
 export type Voices = Partial<Record<VoiceId, string>>
 export type Sounds = Partial<Record<SoundId, Voices>>
 export const VOICE_STYLES: readonly { id: VoiceId; label: string }[] = [
@@ -45,24 +73,28 @@ export const SOUND_PROFILES: readonly { id: SoundId; label: string }[] = [
   { id: 'pop', label: 'Band' },
   { id: 'plettro', label: 'Plettro' },
   { id: 'dita', label: 'Dita' },
+  { id: 'rave', label: 'Rave' },
+  { id: 'happy', label: 'Happy' },
 ]
 
 // The collections (albums) the songs are gathered in, in the menu's order: the
 // band's own songs, played in its club; HANA, songs of the SAP world, played in
 // a data center; Odissea, songs of the ancient world and of its philosophers,
-// played in a temple; and MDO, the Serenata's own love story, played on an
-// evening of its own. The ambiences are in hooks/ambiences.
-export type CollectionId = 'band' | 'hana' | 'odissea' | 'mdo'
-export type AmbienceId = 'club' | 'datacenter' | 'antico' | 'serata'
+// played in a temple; MDO, the Serenata's own love story, played on an
+// evening of its own; and Carica, songs that give a charge, played at a rave.
+// The ambiences are in hooks/ambiences.
+export type CollectionId = 'band' | 'hana' | 'odissea' | 'mdo' | 'carica'
+export type AmbienceId = 'club' | 'datacenter' | 'antico' | 'serata' | 'rave'
 export const COLLECTIONS: readonly { id: CollectionId; label: string; ambience: AmbienceId }[] = [
   { id: 'band', label: 'La band', ambience: 'club' },
   { id: 'hana', label: 'HANA', ambience: 'datacenter' },
   { id: 'odissea', label: 'Odissea', ambience: 'antico' },
   { id: 'mdo', label: 'MDO', ambience: 'serata' },
+  { id: 'carica', label: 'Carica', ambience: 'rave' },
 ]
 
 // The sceneries of hooks/sets, by name.
-export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio'
+export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio' | 'batteria' | 'cutover' | 'venerdi'
 
 export type Song = Timing & {
   // Its address in the menus, in /canta and in the store: short, never reused.
@@ -126,6 +158,11 @@ export const SONGS: readonly Song[] = [
   // The Serenata's sequel, the first of its own album: three acronyms, spelled
   // out, that belong to it.
   { id: 'in-principio', title: 'In principio fu il MAV', collection: 'mdo', scenery: 'principio', audio: IN_PRINCIPIO_AUDIO, ...IN_PRINCIPIO_TIMING },
+  // The first song of Carica: hardcore techno, the kick on every beat at 180.
+  { id: 'centottanta', title: 'Centottanta', collection: 'carica', scenery: 'batteria', audio: CENTOTTANTA_AUDIO, ...CENTOTTANTA_TIMING },
+  // The night a system goes live, at 190; and Friday at six, happy hardcore.
+  { id: 'cutover', title: 'Cutover', collection: 'carica', scenery: 'cutover', audio: CUTOVER_AUDIO, ...CUTOVER_TIMING },
+  { id: 'venerdi', title: 'Venerdì', collection: 'carica', scenery: 'venerdi', audio: VENERDI_AUDIO, ...VENERDI_TIMING },
 ]
 
 // The song with this id, or the first one when no song has it any more.

@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/serenata.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built 2f91c1159b8399602b40b512e64fae58fdddaff96ca06a6633d967e5b54bd727
+// built 34d158a99e116b1cce20751e6e651a01aee3a1201577ddd8cb8c21ca3a2b82cb
 // source audio/canzone.m4a 64d3bce47cd8ee16d48dad24325b5864a431526384cd28f00a6aea3a7d44648c dd0beb76f7f08452bd0288c1daf70573604a306c586446e10b0e8f8925c3206e
 import type { Sounds, Timing } from '../song'
 

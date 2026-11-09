@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/in-principio.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built 8c4814c5b1229c06372ea3f2872f43959c4e467163374233564fa4782cf6f004
+// built 103055ed31a9e2eb75263e44705a1fafcfa1bfd5919bbbf4814a98467337c21b
 // source audio/in-principio.m4a e75d10b1bbff83935a8e62a6cde05643153930c4823c9f9057ef7a14b0c4d483 55ebdd7132446909fe52d06b2c3f73d6a6b3d3ce63f071ba63b6bacbe3256702
 // source audio/in-principio-avanzato.m4a 0c35af4fc52fb567c47a104db8b28898988d26f21fb6e7aac220e079862b2d0d cd0fb34f7c71de5fd06bf5792f0c088c45c8adbf3225589f8fe76424a82bb0b7
 import type { Sounds, Timing } from '../song'

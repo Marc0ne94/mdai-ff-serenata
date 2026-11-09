@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/dipende-da-me.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built 4a1d4ed2ef5ccc15c6081143024e247bb81c78144c7f4c031ed5ed703014c053
+// built c507bc672feeca7fa5157844ae369e9f87d64896d8f07352f0064b829e991bfb
 // source audio/dipende-da-me.m4a b2f61c8ac5d7de7f3ab1d651086a8fd6cfe454e083c24686918e72d366500fef 653cceb644e4fea22d894c427986856b93f799b28c09052875d6d6a2b46e8125
 // source audio/dipende-da-me-avanzato.m4a d6caa567e4b76a548050e7803d9366e35c42b3b885d2ce00511d52eb33b40f4f 17bde082f14b69ee716446488c0aefb2a97dadaa3566ec2db251137444729267
 // source audio/dipende-da-me-dita.m4a 04b9660ccfadd328a9b7aa7a38f8c19960f32550e8afbf6c3267c563af10e105 5d36732a839e6e9f5c7d24f9072728054d9412ccf4fad1ae1ee59f98baa309de

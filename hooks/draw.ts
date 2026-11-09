@@ -1,4 +1,5 @@
 import type { Song } from './song'
+import { partsOf, sectionsOf } from './song'
 
 // What every drawing of the stage is built with: fonts, colors, timing and
 // the small helpers that write SVG.
@@ -39,6 +40,56 @@ export const shift = (values: string, dur: number, begin: number, end: number) =
 
 export const petal = (l: number, w: number) =>
   `M0 0 C ${n1(-w)} ${n1(-l * 0.2)} ${n1(-w * 1.1)} ${n1(-l * 0.85)} 0 ${n1(-l)} C ${n1(w * 1.1)} ${n1(-l * 0.85)} ${n1(w)} ${n1(-l * 0.2)} 0 0 Z`
+
+// When a song's drops start and when what lights up for them goes out: as
+// each ends, or a moment into the outro for the one that runs into it; as
+// begin lists of an animation. Drops one after the other light as one: an
+// end and a start at the same moment would leave the second dark.
+export function dropLights(song: Song) {
+  const spans: [number, number][] = []
+  for (const { start, end } of partsOf(song, 'drop')) {
+    const last = spans.at(-1)
+    if (last && Math.abs(last[1] - start) < 0.01) last[1] = end
+    else spans.push([start, end])
+  }
+  return {
+    spans,
+    on: spans.map(([start]) => sec(start)).join(';'),
+    off: spans.map(([, end]) => sec(end >= song.outroAt - 0.01 ? song.outroAt + 1 : end)).join(';'),
+    first: spans[0]?.[0] ?? song.finaleAt,
+  }
+}
+
+// When the rave band's kick plays (see tools/synth.mjs): from the song's
+// first kick through every section but the breaks, until the outro; as begin
+// and end lists of an animation.
+export function kickSpans(song: Song) {
+  const from = song.drumsAt ?? 0
+  const spans: [number, number][] = []
+  for (const { part, start, end } of sectionsOf(song)) {
+    if (part === 'break' || part === 'outro' || end <= from) continue
+    const last = spans.at(-1)
+    if (last && Math.abs(last[1] - start) < 0.01) last[1] = end
+    else spans.push([Math.max(start, from), end])
+  }
+  return { begin: spans.map(([b]) => sec(b)).join(';'), end: spans.map(([, e]) => sec(e)).join(';') }
+}
+
+// Texts shown one after another in the same place, each from its moment
+// until the next one's; `attrs` are each text's own attributes.
+export function inTurn(items: readonly { at: number; text: string; attrs: string }[]) {
+  return items
+    .map((item, k) => {
+      const next = items[k + 1]
+      return (
+        `<text ${item.attrs} visibility="${k === 0 ? 'visible' : 'hidden'}">${item.text}` +
+        (k > 0 ? `<set attributeName="visibility" to="visible" begin="${sec(item.at)}" fill="freeze"/>` : '') +
+        (next === undefined ? '' : `<set attributeName="visibility" to="hidden" begin="${sec(next.at)}" fill="freeze"/>`) +
+        `</text>`
+      )
+    })
+    .join('')
+}
 
 export const LEAF = 'M0 0 C -14 -16 -36 -18 -50 -8 C -36 4 -16 6 0 0 Z'
 
@@ -82,4 +133,7 @@ export type Ambience = {
   instruments?: 'band' | 'antica'
   // The colours of the drummer's riser, its face and its top edge.
   riser?: { fill: string; edge: string }
+  // What stands in front of the band, over it (a crowd), in the stage's own
+  // frame; it takes no taps, which reach the singer beneath.
+  front?: (song: Song) => string
 }

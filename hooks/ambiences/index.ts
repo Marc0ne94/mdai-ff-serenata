@@ -2,6 +2,7 @@ import type { Ambience } from '../draw'
 import type { AmbienceId } from '../song'
 import { ANTICO } from './antico'
 import { DATACENTER } from './datacenter'
+import { RAVE } from './rave'
 import { SERATA } from './serata'
 
 // The band's own club, as first drawn: it sets nothing, so the stage draws its
@@ -9,4 +10,4 @@ import { SERATA } from './serata'
 const CLUB: Ambience = {}
 
 // Every ambience, by the name a collection gives in `ambience`.
-export const AMBIENCES: Record<AmbienceId, Ambience> = { club: CLUB, antico: ANTICO, datacenter: DATACENTER, serata: SERATA }
+export const AMBIENCES: Record<AmbienceId, Ambience> = { club: CLUB, antico: ANTICO, datacenter: DATACENTER, serata: SERATA, rave: RAVE }

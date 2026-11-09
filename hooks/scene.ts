@@ -3,7 +3,7 @@ import { box, FONT, GOLD, HEIGHT, n1, NEON, ORANGE, random, sec, shift, SKIN, to
 import type { Ambience, Scenery } from './draw'
 import { SCENERIES } from './sets'
 import type { Song } from './song'
-import { ambienceOf } from './song'
+import { ambienceOf, partsOf, sectionsOf } from './song'
 
 // The stage the band draws while the song plays: a band of pixel Claudes at
 // the back (bass, drums on a riser, keys), the singer and the rose in front.
@@ -22,11 +22,11 @@ const KEYS_X = 870
 // The stage's size, which the band draws it at.
 export const STAGE = { width: WIDTH, height: HEIGHT }
 
-// The song the stage is drawn for, its scenery, and when each part plays in
-// it, as tools/synth.mjs arranges a song. band() sets them for its one
-// synchronous pass and clears them after: a piece drawn outside band() fails
-// at once, instead of drawing whatever song was drawn last.
-type Tuned = { SONG: Song; SCENERY: Scenery; AMBIENCE: Ambience; BASS_AT: number; DRUMS_AT: number; CRASHES: number[]; BAND_END: number }
+// The song the stage is drawn for, its scenery, when each part plays in it,
+// as tools/synth.mjs arranges a song, and the beat the band moves to. band()
+// sets them for its one synchronous pass and clears them after: a piece drawn
+// outside band() fails at once, instead of drawing whatever song was drawn last.
+type Tuned = { SONG: Song; SCENERY: Scenery; AMBIENCE: Ambience; BASS_AT: number; DRUMS_AT: number; CRASHES: number[]; BAND_END: number; PULSE: number }
 let TUNED: Tuned | null = null
 
 function tuned(): Tuned {
@@ -106,8 +106,8 @@ function neon() {
 }
 
 function lights() {
-  const { SONG, AMBIENCE, BASS_AT, DRUMS_AT } = tuned()
-  const { beat, finaleAt, outroAt } = SONG
+  const { SONG, AMBIENCE, BASS_AT, DRUMS_AT, PULSE: beat } = tuned()
+  const { finaleAt, outroAt } = SONG
   const [left, right] = AMBIENCE.beams ?? ['beamPurple', 'beamPink']
   const beam = (x: number, fill: string, values: string, begin: number) =>
     `<polygon points="${x - 12},0 ${x + 12},0 ${x + 62},218 ${x - 62},218" fill="url(#${fill})" opacity="0">` +
@@ -175,11 +175,11 @@ const TAPS = 5
 const TAP_WINDOW = 2.5
 
 function singer() {
-  const { SONG, SCENERY, BASS_AT } = tuned()
+  const { SONG, SCENERY, BASS_AT, PULSE: beat } = tuned()
   const u = 10
   const feet = 214
   const top = feet - 8 * u
-  const { beat, outroAt } = SONG
+  const { outroAt } = SONG
   const track = mouthTrack()
   const keyTimes = track.map(([t], i) => (i === track.length - 1 ? '1' : (t / SONG.duration).toFixed(5))).join(';')
   const mouth =
@@ -260,9 +260,8 @@ function taps() {
 }
 
 function bassist() {
-  const { SONG, AMBIENCE, BASS_AT, BAND_END } = tuned()
+  const { AMBIENCE, BASS_AT, BAND_END, PULSE: beat } = tuned()
   if (AMBIENCE.instruments === 'antica') return kitharist()
-  const { beat } = SONG
   const bass =
     `<polygon points="0.2,4.2 2.8,3.6 4.6,4.6 4.2,6.4 1.8,7 0,6" fill="#7c4dbd"/>` +
     `<polygon points="0.8,4.6 2.6,4.1 3.9,4.9 3.6,5.9 1.9,6.3 0.7,5.6" fill="#9b6fd6"/>` +
@@ -289,9 +288,9 @@ function bassist() {
 }
 
 function drummer() {
-  const { SONG, AMBIENCE, DRUMS_AT, CRASHES } = tuned()
+  const { SONG, AMBIENCE, DRUMS_AT, CRASHES, PULSE: beat } = tuned()
   if (AMBIENCE.instruments === 'antica') return tympanist()
-  const { beat, outroAt } = SONG
+  const { outroAt } = SONG
   const stickArm = (x: number, stick: string, values: string) =>
     `<g>${shift(values, beat, DRUMS_AT, outroAt)}${box(x, 2, 2, 2, ORANGE)}<line ${stick} stroke="#efd9a7" stroke-width="0.35"/></g>`
   const arms =
@@ -313,9 +312,8 @@ function drummer() {
 }
 
 function keyboardist() {
-  const { SONG, AMBIENCE, BAND_END } = tuned()
+  const { AMBIENCE, BAND_END, PULSE: beat } = tuned()
   if (AMBIENCE.instruments === 'antica') return auletes()
-  const { beat } = SONG
   const x = KEYS_X
   // Fourteen white keys; a black one after each but the third and seventh of an octave.
   let keys = ''
@@ -333,9 +331,9 @@ function keyboardist() {
 }
 
 function amp() {
-  const { SONG, AMBIENCE, DRUMS_AT } = tuned()
+  const { SONG, AMBIENCE, DRUMS_AT, PULSE: beat } = tuned()
   if (AMBIENCE.instruments === 'antica') return amphora()
-  const { beat, outroAt } = SONG
+  const { outroAt } = SONG
   return (
     `<rect x="${AMP_X}" y="176" width="46" height="38" rx="3" fill="#1e1a26" stroke="#3a3348"/>` +
     `<rect x="${AMP_X + 4}" y="179" width="38" height="4" fill="#3a3348"/>` +
@@ -353,8 +351,7 @@ const STRING = '#efe6d2'
 
 // The kithara, the lyre with a box: held on the left, strummed as the bass is.
 function kitharist() {
-  const { SONG, BASS_AT, BAND_END } = tuned()
-  const { beat } = SONG
+  const { BASS_AT, BAND_END, PULSE: beat } = tuned()
   const strings = [-3.6, -2.6, -1.6, -0.6].map(x => box(x, -0.3, 0.12, 4.5, STRING)).join('')
   const kithara =
     box(-4.8, -0.5, 0.5, 4.6, BRONZE) + box(0.3, -0.5, 0.5, 4.6, BRONZE) + box(-5.1, -0.9, 6.2, 0.5, BRONZE) +
@@ -367,8 +364,8 @@ function kitharist() {
 // The tympanon, the frame drum, beaten by hand on a stone platform, with two
 // small jingling drums where the cymbals were.
 function tympanist() {
-  const { SONG, DRUMS_AT, CRASHES } = tuned()
-  const { beat, outroAt } = SONG
+  const { SONG, DRUMS_AT, CRASHES, PULSE: beat } = tuned()
+  const { outroAt } = SONG
   const handArm = (x: number, values: string) => `<g>${shift(values, beat, DRUMS_AT, outroAt)}${box(x, 2, 2, 2, ORANGE)}</g>`
   const arms = handArm(-2, '0 -0.8;0 0.6') + handArm(8, '0 0.6;0 -0.8')
   const x = DRUMS_X
@@ -391,8 +388,7 @@ function tympanist() {
 // The aulos, the double pipe: one reed in the mouth, two pipes spreading down,
 // fingers moving on each.
 function auletes() {
-  const { SONG, BAND_END } = tuned()
-  const { beat } = SONG
+  const { BAND_END, PULSE: beat } = tuned()
   const pipes =
     `<line x1="3.6" y1="3.8" x2="-1.4" y2="9.2" stroke="${BRONZE}" stroke-width="0.5"/>` +
     `<line x1="4.4" y1="3.8" x2="9.4" y2="9.2" stroke="${BRONZE}" stroke-width="0.5"/>` +
@@ -435,7 +431,20 @@ export function band(runId: number, song: Song) {
   const SCENERY = SCENERIES[song.scenery]
   const AMBIENCE = AMBIENCES[ambienceOf(song)]
   const SONG = song
-  TUNED = { SONG, SCENERY, AMBIENCE, BASS_AT: song.bassAt ?? 2 * song.bar, DRUMS_AT: song.drumsAt ?? 6 * song.bar, CRASHES: [10 * song.bar, 13 * song.bar], BAND_END: 15 * song.bar }
+  // A crash where each drop starts and on the last bar of the last; the band
+  // plays until the last bar.
+  const drops = partsOf(song, 'drop')
+  const end = sectionsOf(song).at(-1)?.end ?? 16 * song.bar
+  TUNED = {
+    SONG,
+    SCENERY,
+    AMBIENCE,
+    BASS_AT: song.bassAt ?? 2 * song.bar,
+    DRUMS_AT: song.drumsAt ?? 6 * song.bar,
+    CRASHES: song.sections ? [...drops.map(d => d.start), (drops.at(-1)?.end ?? end) - song.bar] : [10 * song.bar, 13 * song.bar],
+    BAND_END: song.sections ? end - song.bar : 15 * song.bar,
+    PULSE: song.pulse ?? song.beat,
+  }
   try {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}"><!-- run ${runId} --><!-- song ${song.id} -->
 ${DEFS}${AMBIENCE.defs ?? ''}${SCENERY.defs ?? ''}
@@ -448,7 +457,7 @@ ${bassist()}
 ${keyboardist()}
 ${amp()}
 <g transform="translate(${ROSE_X} 216) scale(0.36) translate(-300 -545)">${SCENERY.prop(SONG)}</g>
-${singer()}${SCENERY.overlay ? `<g pointer-events="none">${SCENERY.overlay(SONG)}</g>` : ''}
+${singer()}${AMBIENCE.front ? `<g pointer-events="none">${AMBIENCE.front(SONG)}</g>` : ''}${SCENERY.overlay ? `<g pointer-events="none">${SCENERY.overlay(SONG)}</g>` : ''}
 ${taps()}
 </g>
 </svg>`
