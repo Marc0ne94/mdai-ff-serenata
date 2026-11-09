@@ -1,11 +1,14 @@
-import { SONG } from './song'
+import { AMBIENCES } from './ambiences'
+import { box, FONT, GOLD, HEIGHT, n1, NEON, ORANGE, random, sec, shift, SKIN, toggle, WIDTH } from './draw'
+import type { Ambience, Scenery } from './draw'
+import { SCENERIES } from './sets'
+import type { Song } from './song'
+import { ambienceOf } from './song'
 
 // The stage the band draws while the song plays: a band of pixel Claudes at
 // the back (bass, drums on a riser, keys), the singer and the rose in front.
 // Its timeline is the song's: every animation
 // counts from the moment the drawing appears, as the audio does.
-const WIDTH = 1080
-const HEIGHT = 224
 const CX = WIDTH / 2
 
 // Where everyone stands, across the stage.
@@ -19,47 +22,18 @@ const KEYS_X = 870
 // The stage's size, which the band draws it at.
 export const STAGE = { width: WIDTH, height: HEIGHT }
 
-// When each part plays, as tools/synth.mjs arranges the song.
-const BASS_AT = 2 * SONG.bar
-const DRUMS_AT = 6 * SONG.bar
-const CRASHES = [10 * SONG.bar, 13 * SONG.bar]
-const BAND_END = 15 * SONG.bar
+// The song the stage is drawn for, its scenery, and when each part plays in
+// it, as tools/synth.mjs arranges a song. band() sets them for its one
+// synchronous pass and clears them after: a piece drawn outside band() fails
+// at once, instead of drawing whatever song was drawn last.
+type Tuned = { SONG: Song; SCENERY: Scenery; AMBIENCE: Ambience; BASS_AT: number; DRUMS_AT: number; CRASHES: number[]; BAND_END: number }
+let TUNED: Tuned | null = null
 
-const FONT = "-apple-system, 'Helvetica Neue', Helvetica, sans-serif"
-const NEON = "'Avenir Next Condensed', Futura, 'Helvetica Neue', sans-serif"
-const GOLD = '#ffd166'
-const ORANGE = '#cf7b5c'
-const SKIN = '#e9a17f'
-
-const sec = (t: number) => `${Math.max(0, t).toFixed(2)}s`
-const n1 = (x: number) => x.toFixed(1)
-
-function random(seed: number) {
-  let a = seed
-  return () => {
-    a = (a + 0x6d2b79f5) | 0
-    let t = Math.imul(a ^ (a >>> 15), 1 | a)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
+function tuned(): Tuned {
+  if (!TUNED) throw new Error('the stage is drawn by band() only')
+  return TUNED
 }
 
-const box = (x: number, y: number, w: number, h: number, fill: string, extra = '') =>
-  `<rect x="${n1(x)}" y="${n1(y)}" width="${n1(w)}" height="${n1(h)}" fill="${fill}"${extra}/>`
-
-const grow = (begin: number, dur: number) =>
-  `<animateTransform attributeName="transform" type="scale" from="0" to="1" begin="${sec(begin)}" dur="${sec(dur)}" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.8 0.3 1"/>`
-
-// A step back and forth every `dur`, between `begin` and `end`, as pixel art moves.
-const toggle = (attribute: string, values: string, dur: number, begin: number, end: number) =>
-  `<animate attributeName="${attribute}" values="${values}" dur="${sec(dur)}" begin="${sec(begin)}" end="${sec(end)}" calcMode="discrete" repeatCount="indefinite"/>`
-const shift = (values: string, dur: number, begin: number, end: number) =>
-  `<animateTransform attributeName="transform" type="translate" values="${values}" dur="${sec(dur)}" begin="${sec(begin)}" end="${sec(end)}" calcMode="discrete" repeatCount="indefinite"/>`
-
-const petal = (l: number, w: number) =>
-  `M0 0 C ${n1(-w)} ${n1(-l * 0.2)} ${n1(-w * 1.1)} ${n1(-l * 0.85)} 0 ${n1(-l)} C ${n1(w * 1.1)} ${n1(-l * 0.85)} ${n1(w)} ${n1(-l * 0.2)} 0 0 Z`
-
-const LEAF = 'M0 0 C -14 -16 -36 -18 -50 -8 C -36 4 -16 6 0 0 Z'
 
 const DEFS = `<defs>
 <clipPath id="stage"><rect width="${WIDTH}" height="${HEIGHT}" rx="16"/></clipPath>
@@ -81,21 +55,11 @@ const DEFS = `<defs>
 // ---------- the room ----------
 
 function room() {
+  const { SONG, SCENERY, AMBIENCE } = tuned()
+  if (AMBIENCE.room) return AMBIENCE.room(SONG, r => SCENERY.wall(SONG, r))
   const r = random(7)
-  let stars = ''
-  for (let i = 0; i < 9; i++) {
-    stars += `<circle cx="${n1(614 + r() * 82)}" cy="${n1(22 + r() * 40)}" r="0.8" fill="#fff"><animate attributeName="opacity" values="0.2;1;0.2" dur="${n1(2 + r() * 3)}s" begin="${n1(r() * 3)}s" repeatCount="indefinite"/></circle>`
-  }
-  let city = ''
-  const towers: [number, number, number][] = [[612, 62, 14], [628, 50, 12], [642, 70, 16], [660, 56, 12], [674, 66, 22]]
-  for (const [x, top, w] of towers) {
-    city += box(x, top, w, 98 - top, '#120c26')
-    for (let wy = top + 4; wy < 94; wy += 7) {
-      for (let wx = x + 3; wx < x + w - 2; wx += 5) {
-        if (r() < 0.35) city += box(wx, wy, 2, 3, '#f7c96b', ' opacity="0.8"')
-      }
-    }
-  }
+  // The scenery's wall draws first: the garland takes the random numbers after it.
+  const wall = SCENERY.wall(SONG, r)
   const pixelHeart = [
     [1, 0], [2, 0], [4, 0], [5, 0], [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1],
     [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [1, 3], [2, 3], [3, 3], [4, 3], [5, 3],
@@ -116,7 +80,7 @@ function room() {
     garland += `<circle cx="${x}" cy="${n1(y + 3)}" r="2.6" fill="${bulbs[i % bulbs.length]}"><animate attributeName="opacity" values="0.35;1;0.35" dur="${n1(1.5 + r() * 1.5)}s" begin="${n1(r() * 2)}s" repeatCount="indefinite"/></circle>`
   }
   return `<rect width="${WIDTH}" height="150" fill="url(#wall)"/>${panels}
-<g transform="translate(${WIDTH - 720} 0)"><rect x="606" y="16" width="96" height="86" fill="#3a2a55"/><rect x="610" y="20" width="88" height="78" fill="url(#night)"/>${stars}${city}<rect x="653" y="20" width="2" height="78" fill="#3a2a55"/></g>
+<g transform="translate(${WIDTH - 720} 0)">${wall}</g>
 <polyline points="${wire.join(' ')}" fill="none" stroke="#3a2a55" stroke-width="1.2"/>${garland}
 <text x="16" y="17" font-family="Menlo, 'SF Mono', monospace" font-weight="700" font-size="11" letter-spacing="1.5" fill="#ffd6f3" filter="url(#neon)">M2V-MDO</text>
 <rect x="44" y="26" width="51" height="46" fill="#2b1c40" stroke="#4a3566" stroke-width="3"/>${pixelHeart}
@@ -124,23 +88,27 @@ function room() {
 }
 
 function neon() {
+  const { SONG, SCENERY, AMBIENCE } = tuned()
+  const { fill, stroke } = AMBIENCE.sign ?? { fill: '#ffe3f6', stroke: '#ff4fc3' }
   const sign = (text: string, extra: string) =>
-    `<text x="${CX}" y="46" text-anchor="middle" font-family="${NEON}" font-weight="700" font-size="22" letter-spacing="4" fill="#ffe3f6" stroke="#ff4fc3" stroke-width="0.8" filter="url(#neon)" opacity="0">${text}${extra}</text>`
+    `<text x="${CX}" y="46" text-anchor="middle" font-family="${NEON}" font-weight="700" font-size="22" letter-spacing="4" fill="${fill}" stroke="${stroke}" stroke-width="0.8" filter="url(#neon)" opacity="0">${text}${extra}</text>`
   return (
     sign(
-      'CLAUDE CANTA',
+      SCENERY.neon[0],
       `<animate attributeName="opacity" values="0;1;0.2;1;0.4;1" keyTimes="0;0.2;0.35;0.5;0.7;1" dur="1.2s" begin="0.2s" fill="freeze"/>` +
         `<animate attributeName="opacity" from="1" to="0" begin="${sec(SONG.outroAt + 0.4)}" dur="0.6s" fill="freeze"/>`,
     ) +
     sign(
-      'PER TE ♥',
+      SCENERY.neon[1],
       `<animate attributeName="opacity" values="0;1;0.3;1" keyTimes="0;0.4;0.6;1" dur="1s" begin="${sec(SONG.outroAt + 1)}" fill="freeze"/>`,
     )
   )
 }
 
 function lights() {
+  const { SONG, AMBIENCE, BASS_AT, DRUMS_AT } = tuned()
   const { beat, finaleAt, outroAt } = SONG
+  const [left, right] = AMBIENCE.beams ?? ['beamPurple', 'beamPink']
   const beam = (x: number, fill: string, values: string, begin: number) =>
     `<polygon points="${x - 12},0 ${x + 12},0 ${x + 62},218 ${x - 62},218" fill="url(#${fill})" opacity="0">` +
     `<animate attributeName="opacity" from="0" to="0.35" begin="${sec(begin)}" dur="1.5s" fill="freeze"/>` +
@@ -149,7 +117,7 @@ function lights() {
   const spot =
     `<polygon points="${SINGER_X - 14},0 ${SINGER_X + 14},0 ${SINGER_X + 78},218 ${SINGER_X - 78},218" fill="url(#beamWhite)" opacity="0">` +
     `<animate attributeName="opacity" from="0" to="0.8" begin="${sec(BASS_AT - 0.8)}" dur="1.5s" fill="freeze"/></polygon>`
-  return beam(BASS_X, 'beamPurple', '0.6;0.2', BASS_AT) + beam(KEYS_X, 'beamPink', '0.2;0.6', DRUMS_AT) + spot
+  return beam(BASS_X, left, '0.6;0.2', BASS_AT) + beam(KEYS_X, right, '0.2;0.6', DRUMS_AT) + spot
 }
 
 // ---------- the pixel Claudes ----------
@@ -169,18 +137,20 @@ type Member = {
 // arms on rows 2–3 unless the member brings its own; `front` is drawn over
 // it in the same cells (an instrument, a hand).
 function member({ cx, feet, u, blink, arms, front, face, hop }: Member) {
+  const { AMBIENCE } = tuned()
   const eye = (x: number) =>
     `<rect x="${x}" y="1" width="1" height="1" fill="#000"><animate attributeName="height" values="1;1;0.25;1" keyTimes="0;0.93;0.96;1" dur="4.3s" begin="${sec(blink)}" repeatCount="indefinite"/><animate attributeName="y" values="1;1;1.375;1" keyTimes="0;0.93;0.96;1" dur="4.3s" begin="${sec(blink)}" repeatCount="indefinite"/></rect>`
   const legs = [0, 2, 5, 7].map(x => box(x, 6, 1, 2, ORANGE)).join('')
   const motion = hop ? shift('0 0;0 -0.5', hop.dur, hop.begin, hop.end) : ''
   return `<ellipse cx="${cx}" cy="${feet}" rx="${6 * u}" ry="${u * 0.5}" fill="#000" opacity="0.3"/>
 <g transform="translate(${cx - 4 * u} ${feet - 8 * u}) scale(${u})" shape-rendering="crispEdges"><g>${motion}
-${box(0, 0, 8, 6, ORANGE)}${arms ?? box(-2, 2, 2, 2, ORANGE) + box(8, 2, 2, 2, ORANGE)}${legs}${eye(1)}${eye(6)}${face ?? ''}${front ?? ''}
+${box(0, 0, 8, 6, ORANGE)}${arms ?? box(-2, 2, 2, 2, ORANGE) + box(8, 2, 2, 2, ORANGE)}${legs}${eye(1)}${eye(6)}${face ?? ''}${front ?? ''}${AMBIENCE.crown ?? ''}
 </g></g>`
 }
 
 // How far the singer's mouth opens over the whole clip, 0 to 1.
 function mouthTrack() {
+  const { SONG } = tuned()
   const points: [number, number][] = [[0, 0]]
   for (const line of SONG.lines) {
     for (const syl of line.syls) {
@@ -201,29 +171,11 @@ function mouthTrack() {
   })
 }
 
-// A flower for the singer's other hand: quick taps on the singer bring it out.
-const TULIP = [
-  'R...M...R',
-  'RR.MMM.RR',
-  '.RRRMRRR.',
-  '.RRRRRRR.',
-  '..DRRRD..',
-  '....S....',
-  '....S....',
-  '.LL.S....',
-  '..LLS....',
-  '....S....',
-  '....S.LL.',
-  '....SLL..',
-  '....S....',
-  '....S....',
-  '....S....',
-]
-const TULIP_COLORS: Record<string, string> = { R: '#e0245e', M: '#ff6f91', D: '#a3123c', S: '#3a9a4a', L: '#4caf50' }
 const TAPS = 5
 const TAP_WINDOW = 2.5
 
 function singer() {
+  const { SONG, SCENERY, BASS_AT } = tuned()
   const u = 10
   const feet = 214
   const top = feet - 8 * u
@@ -239,9 +191,9 @@ function singer() {
     `<rect x="${x}" y="2" width="2" height="2" fill="${ORANGE}">${toggle('y', isFirst ? '2;1' : '1;2', 2 * beat, BASS_AT, outroAt + 1)}</rect>`
   // Drawn in the singer's cells, its stem in the right-hand arm, moving with it.
   const p = 0.4
-  const pixels = TULIP.flatMap((row, y) =>
+  const pixels = SCENERY.gadget.pixels.flatMap((row, y) =>
     [...row].map((c, x) => {
-      const fill = TULIP_COLORS[c]
+      const fill = SCENERY.gadget.colors[c]
       return fill ? box(7.2 + x * p, -3.6 + y * p, p, p, fill) : ''
     }),
   ).join('')
@@ -308,6 +260,8 @@ function taps() {
 }
 
 function bassist() {
+  const { SONG, AMBIENCE, BASS_AT, BAND_END } = tuned()
+  if (AMBIENCE.instruments === 'antica') return kitharist()
   const { beat } = SONG
   const bass =
     `<polygon points="0.2,4.2 2.8,3.6 4.6,4.6 4.2,6.4 1.8,7 0,6" fill="#7c4dbd"/>` +
@@ -335,6 +289,8 @@ function bassist() {
 }
 
 function drummer() {
+  const { SONG, AMBIENCE, DRUMS_AT, CRASHES } = tuned()
+  if (AMBIENCE.instruments === 'antica') return tympanist()
   const { beat, outroAt } = SONG
   const stickArm = (x: number, stick: string, values: string) =>
     `<g>${shift(values, beat, DRUMS_AT, outroAt)}${box(x, 2, 2, 2, ORANGE)}<line ${stick} stroke="#efd9a7" stroke-width="0.35"/></g>`
@@ -342,7 +298,8 @@ function drummer() {
     stickArm(-2, 'x1="-1.5" y1="2.2" x2="-3.6" y2="0.4"', '0 -0.8;0 0.6') +
     stickArm(8, 'x1="9.5" y1="2.2" x2="11.6" y2="0.4"', '0 0.6;0 -0.8')
   const x = DRUMS_X
-  const riser = `<rect x="${x - 72}" y="128" width="144" height="22" fill="#2e1f45"/><rect x="${x - 72}" y="128" width="144" height="2" fill="#5b3d86"/>`
+  const { fill, edge } = tuned().AMBIENCE.riser ?? { fill: '#2e1f45', edge: '#5b3d86' }
+  const riser = `<rect x="${x - 72}" y="128" width="144" height="22" fill="${fill}"/><rect x="${x - 72}" y="128" width="144" height="2" fill="${edge}"/>`
   const crash = (cx: number, cy: number, rx: number) =>
     `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="128" stroke="#8c8c99" stroke-width="1.5"/>` +
     `<g transform="translate(${cx} ${cy})"><ellipse rx="${rx}" ry="${rx / 5}" fill="#f0c75e"><animateTransform attributeName="transform" type="rotate" values="0;-14;8;0" dur="0.7s" begin="${CRASHES.map(sec).join(';')}"/></ellipse></g>`
@@ -356,6 +313,8 @@ function drummer() {
 }
 
 function keyboardist() {
+  const { SONG, AMBIENCE, BAND_END } = tuned()
+  if (AMBIENCE.instruments === 'antica') return auletes()
   const { beat } = SONG
   const x = KEYS_X
   // Fourteen white keys; a black one after each but the third and seventh of an octave.
@@ -374,6 +333,8 @@ function keyboardist() {
 }
 
 function amp() {
+  const { SONG, AMBIENCE, DRUMS_AT } = tuned()
+  if (AMBIENCE.instruments === 'antica') return amphora()
   const { beat, outroAt } = SONG
   return (
     `<rect x="${AMP_X}" y="176" width="46" height="38" rx="3" fill="#1e1a26" stroke="#3a3348"/>` +
@@ -383,62 +344,75 @@ function amp() {
   )
 }
 
-// ---------- the rose ----------
+// ---------- the ancient band ----------
 
-// The rose in its pot, drawn in a 400-wide scene of its own (pot standing at 300,545).
-function flower() {
-  const { bloomAt, finaleAt, beat, bar } = SONG
-  const pot = `<g transform="translate(300 545)"><path d="M -34 -46 L 34 -46 L 26 0 L -26 0 Z" fill="url(#pot)"/><rect x="-38" y="-54" width="76" height="12" rx="3" fill="#c6643f"/><ellipse cx="0" cy="-54" rx="34" ry="4" fill="#3a2016"/></g>`
-  const stem =
-    `<path d="M300 491 C 288 440, 314 380, 300 302" stroke="#3a9a4a" stroke-width="5" fill="none" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1">` +
-    `<animate attributeName="stroke-dashoffset" from="1" to="0" begin="1s" dur="13s" fill="freeze"/></path>`
-  const leaf = (x: number, y: number, mirror: boolean, begin: number) =>
-    `<g transform="translate(${x} ${y})${mirror ? ' scale(-1 1)' : ''}"><g transform="scale(0)">${grow(begin, 1.6)}<path d="${LEAF}" fill="#3fa34d"/><path d="M0 0 C -16 -6 -32 -8 -46 -7" stroke="#2d6a33" stroke-width="1.5" fill="none"/></g></g>`
-  const sepals = [-50, 0, 50]
-    .map(a => `<path d="M0 0 C -5 8 -14 14 -22 13 C -14 6 -6 0 0 0 Z" transform="rotate(${a})" fill="#3a9a4a"/>`)
-    .join('')
-  const bud =
-    `<g transform="translate(300 302)"><g transform="scale(0)">${grow(13.5, 1.5)}${sepals}</g></g>` +
-    `<g transform="translate(300 300)"><g><animate attributeName="opacity" from="1" to="0" begin="${sec(bloomAt + 0.8)}" dur="1.2s" fill="freeze"/>` +
-    `<g transform="scale(0)">${grow(14, 2)}<animateTransform attributeName="transform" type="scale" from="1" to="1.25" begin="19s" dur="6s" fill="freeze"/>` +
-    `<path d="M0 4 C -14 0 -14 -26 0 -34 C 14 -26 14 0 0 4 Z" fill="url(#petal2)"/></g></g></g>`
-  const ring = (count: number, offset: number, length: number, width: number, fill: string, start: number, step: number) =>
-    Array.from({ length: count }, (_, i) => {
-      const angle = offset + (360 / count) * i
-      return `<g transform="rotate(${n1(angle)})"><path d="${petal(length, width)}" fill="${fill}" transform="scale(0)">${grow(start + i * step, 1.6)}</path></g>`
-    }).join('')
-  const bloom =
-    `<g transform="translate(300 300)">` +
-    ring(6, 0, 50, 22, 'url(#petal)', bloomAt, 0.3) +
-    ring(6, 30, 38, 18, 'url(#petal2)', bloomAt + 2.2, 0.25) +
-    ring(4, 45, 24, 12, '#a3123c', bloomAt + 4, 0.2) +
-    `<g transform="scale(0)">${grow(bloomAt + 5, 1.2)}<circle r="9" fill="#6e0a2a"/><path d="M -4 0 a 4 4 0 1 1 8 0 a 6 6 0 1 1 -12 0" stroke="#ff7aa0" stroke-width="1.5" fill="none" opacity="0.7"/></g>` +
-    `</g>`
-  const glow =
-    `<circle cx="300" cy="295" r="95" fill="url(#glow)" opacity="0">` +
-    `<animate attributeName="opacity" from="0" to="0.55" begin="${sec(bloomAt)}" dur="3s" fill="freeze"/>` +
-    `<animate attributeName="opacity" values="0.45;0.85;0.45" dur="${sec(2 * beat)}" begin="${sec(finaleAt)}" repeatCount="indefinite"/></circle>`
-  const r = random(11)
-  let hearts = ''
-  for (let i = 0; i < 8; i++) {
-    // Each heart floats for 4s and is gone before the closing words appear.
-    const begin = [0, 1, 2]
-      .map(k => finaleAt + i * 0.7 + k * 5.6)
-      .filter(t => t + 4 <= SONG.outroAt + 0.5)
-      .map(sec)
-      .join(';')
-    const dx = Math.round((r() - 0.5) * 140)
-    const scale = (0.9 + r() * 0.8).toFixed(2)
-    hearts += `<g transform="translate(300 290)"><g opacity="0"><animateTransform attributeName="transform" type="translate" values="0 0;${dx / 2} -60;${dx} -120" dur="4s" begin="${begin}"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.7;1" dur="4s" begin="${begin}"/><use href="#heart" transform="scale(${scale})" fill="${i % 2 ? '#ff6f91' : '#ffb3c7'}"/></g></g>`
-  }
-  let sparkles = ''
-  for (let i = 0; i < 7; i++) {
-    const x = 300 + (r() - 0.5) * 170
-    const y = 300 + (r() - 0.5) * 150
-    sparkles += `<g transform="translate(${n1(x)} ${n1(y)})"><use href="#sparkle" fill="#fff3b0" transform="scale(0)"><animateTransform attributeName="transform" type="scale" values="0;1.2;0" dur="1.6s" begin="${sec(finaleAt + r() * 2)}" repeatCount="indefinite"/></use></g>`
-  }
-  const sway = `<animateTransform attributeName="transform" type="rotate" values="0 300 491;2 300 491;0 300 491;-2 300 491;0 300 491" dur="${sec(2 * bar)}" begin="${sec(finaleAt)}" repeatCount="indefinite"/>`
-  return `${glow}<g>${sway}${pot}${stem}${leaf(297, 442, false, 5.5)}${leaf(303, 388, true, 9)}${bud}${bloom}</g>${hearts}${sparkles}`
+const WOOD = '#a8743a'
+const DARK_WOOD = '#7a4f24'
+const BRONZE = '#c9a24a'
+const STRING = '#efe6d2'
+
+// The kithara, the lyre with a box: held on the left, strummed as the bass is.
+function kitharist() {
+  const { SONG, BASS_AT, BAND_END } = tuned()
+  const { beat } = SONG
+  const strings = [-3.6, -2.6, -1.6, -0.6].map(x => box(x, -0.3, 0.12, 4.5, STRING)).join('')
+  const kithara =
+    box(-4.8, -0.5, 0.5, 4.6, BRONZE) + box(0.3, -0.5, 0.5, 4.6, BRONZE) + box(-5.1, -0.9, 6.2, 0.5, BRONZE) +
+    strings + box(-4.8, 4, 5.6, 2.6, WOOD) + box(-4.3, 4.4, 4.6, 1.6, DARK_WOOD)
+  const hands =
+    `<g>${shift('0 0;0 0.4', beat / 2, BASS_AT, BAND_END)}${box(-1.5, 3.6, 2, 1.5, ORANGE)}</g>` + box(8, 2, 2, 2, ORANGE)
+  return member({ cx: BASS_X, feet: 168, u: 7, blink: 1.3, arms: '', front: kithara + hands, hop: { dur: beat, begin: BASS_AT, end: BAND_END } })
+}
+
+// The tympanon, the frame drum, beaten by hand on a stone platform, with two
+// small jingling drums where the cymbals were.
+function tympanist() {
+  const { SONG, DRUMS_AT, CRASHES } = tuned()
+  const { beat, outroAt } = SONG
+  const handArm = (x: number, values: string) => `<g>${shift(values, beat, DRUMS_AT, outroAt)}${box(x, 2, 2, 2, ORANGE)}</g>`
+  const arms = handArm(-2, '0 -0.8;0 0.6') + handArm(8, '0 0.6;0 -0.8')
+  const x = DRUMS_X
+  const platform = `<rect x="${x - 72}" y="128" width="144" height="22" fill="#3a3040"/><rect x="${x - 72}" y="128" width="144" height="2" fill="#6b5a70"/>`
+  const jingles = (cx: number, cy: number, r: number) =>
+    `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="128" stroke="#6b5a70" stroke-width="1.5"/>` +
+    `<g transform="translate(${cx} ${cy})"><g><animateTransform attributeName="transform" type="rotate" values="0;-14;8;0" dur="0.7s" begin="${CRASHES.map(sec).join(';')}"/>` +
+    `<circle r="${r}" fill="#efe0c0" stroke="${WOOD}" stroke-width="2"/>` +
+    [0, 1, 2, 3].map(i => `<circle cx="${n1(Math.cos(i * 1.57 + 0.78) * r)}" cy="${n1(Math.sin(i * 1.57 + 0.78) * r)}" r="1.8" fill="${BRONZE}"/>`).join('') +
+    `</g></g>`
+  const drum =
+    jingles(x - 42, 92, 8) +
+    jingles(x + 44, 86, 9) +
+    `<g transform="translate(${x} 116)"><g><animateTransform attributeName="transform" type="scale" values="1.1;1;1;1.1;1;1" keyTimes="0;0.15;0.5;0.5;0.65;1" dur="${sec(2 * beat)}" begin="${sec(DRUMS_AT)}" end="${sec(outroAt)}" repeatCount="indefinite"/>` +
+    `<circle r="16" fill="#efe0c0" stroke="${WOOD}" stroke-width="3.5"/><circle r="10" fill="none" stroke="#c98a5a" stroke-width="1"/>` +
+    `<use href="#heart" transform="translate(0 -6) scale(0.75)" fill="#d8693a"/></g></g>`
+  return platform + member({ cx: x, feet: 128, u: 7, blink: 2.1, arms }) + drum
+}
+
+// The aulos, the double pipe: one reed in the mouth, two pipes spreading down,
+// fingers moving on each.
+function auletes() {
+  const { SONG, BAND_END } = tuned()
+  const { beat } = SONG
+  const pipes =
+    `<line x1="3.6" y1="3.8" x2="-1.4" y2="9.2" stroke="${BRONZE}" stroke-width="0.5"/>` +
+    `<line x1="4.4" y1="3.8" x2="9.4" y2="9.2" stroke="${BRONZE}" stroke-width="0.5"/>` +
+    box(3.4, 3.2, 1.2, 0.8, DARK_WOOD)
+  const hand = (hx: number, hy: number, values: string) => `<g>${shift(values, beat / 2, 0.2, BAND_END)}${box(hx, hy, 1.6, 1.2, ORANGE)}</g>`
+  return member({ cx: KEYS_X, feet: 168, u: 7, blink: 3.2, arms: '', front: pipes + hand(0.6, 6, '0 0;0.3 0') + hand(5.8, 6, '0.3 0;0 0') })
+}
+
+// An amphora where the amplifier stood, painted with a band and a meander.
+function amphora() {
+  const x = AMP_X + 23
+  return (
+    `<ellipse cx="${x}" cy="214" rx="18" ry="3" fill="#000" opacity="0.3"/>` +
+    `<path d="M ${x - 6} 172 L ${x + 6} 172 L ${x + 5} 178 Q ${x + 18} 186 ${x + 15} 200 Q ${x + 12} 210 ${x + 4} 214 L ${x - 4} 214 Q ${x - 12} 210 ${x - 15} 200 Q ${x - 18} 186 ${x - 5} 178 Z" fill="#b5653a"/>` +
+    `<path d="M ${x - 6} 176 Q ${x - 16} 174 ${x - 13} 186" stroke="#8a4a2a" stroke-width="2.4" fill="none"/>` +
+    `<path d="M ${x + 6} 176 Q ${x + 16} 174 ${x + 13} 186" stroke="#8a4a2a" stroke-width="2.4" fill="none"/>` +
+    `<rect x="${x - 15}" y="190" width="30" height="8" fill="#1a1410"/>` +
+    `<path d="M ${x - 13} 196 h 3 v -4 h 3 v 4 h 3 v -4 h 3 v 4 h 3 v -4 h 3 v 4 h 3 v -4 h 3" stroke="#d98a5a" stroke-width="0.8" fill="none"/>` +
+    `<rect x="${x - 7}" y="170" width="14" height="3" fill="#8a4a2a"/>`
+  )
 }
 
 // The quiet band's small picture: Claude blinking beside a beating pixel heart.
@@ -457,9 +431,14 @@ export function badge() {
 </svg>`
 }
 
-export function band(runId: number) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}"><!-- run ${runId} -->
-${DEFS}
+export function band(runId: number, song: Song) {
+  const SCENERY = SCENERIES[song.scenery]
+  const AMBIENCE = AMBIENCES[ambienceOf(song)]
+  const SONG = song
+  TUNED = { SONG, SCENERY, AMBIENCE, BASS_AT: song.bassAt ?? 2 * song.bar, DRUMS_AT: song.drumsAt ?? 6 * song.bar, CRASHES: [10 * song.bar, 13 * song.bar], BAND_END: 15 * song.bar }
+  try {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}"><!-- run ${runId} --><!-- song ${song.id} -->
+${DEFS}${AMBIENCE.defs ?? ''}${SCENERY.defs ?? ''}
 <g clip-path="url(#stage)">
 ${room()}
 ${neon()}
@@ -468,9 +447,12 @@ ${drummer()}
 ${bassist()}
 ${keyboardist()}
 ${amp()}
-<g transform="translate(${ROSE_X} 216) scale(0.36) translate(-300 -545)">${flower()}</g>
-${singer()}
+<g transform="translate(${ROSE_X} 216) scale(0.36) translate(-300 -545)">${SCENERY.prop(SONG)}</g>
+${singer()}${SCENERY.overlay ? `<g pointer-events="none">${SCENERY.overlay(SONG)}</g>` : ''}
 ${taps()}
 </g>
 </svg>`
+  } finally {
+    TUNED = null
+  }
 }

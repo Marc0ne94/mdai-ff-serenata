@@ -1,96 +1,185 @@
-// Timing of audio/canzone.m4a, written by the script that rendered it:
-// seconds from the start of the clip.
+import { AUDIO as DIPENDE_DA_ME_AUDIO, TIMING as DIPENDE_DA_ME_TIMING } from './songs/dipende-da-me'
+import { AUDIO as GO_LIVE_AUDIO, TIMING as GO_LIVE_TIMING } from './songs/go-live'
+import { AUDIO as HANA_DI_NOTTE_AUDIO, TIMING as HANA_DI_NOTTE_TIMING } from './songs/hana-di-notte'
+import { AUDIO as IN_PRINCIPIO_AUDIO, TIMING as IN_PRINCIPIO_TIMING } from './songs/in-principio'
+import { AUDIO as ODISSEA_AUDIO, TIMING as ODISSEA_TIMING } from './songs/odissea'
+import { AUDIO as SERENATA_AUDIO, TIMING as SERENATA_TIMING } from './songs/serenata'
+import { AUDIO as SO_DI_NON_SAPERE_AUDIO, TIMING as SO_DI_NON_SAPERE_TIMING } from './songs/so-di-non-sapere'
+import { AUDIO as TUTTO_PRONTO_AUDIO, TIMING as TUTTO_PRONTO_TIMING } from './songs/tutto-pronto'
+import { AUDIO as UN_ALTRO_ME_STESSO_AUDIO, TIMING as UN_ALTRO_ME_STESSO_TIMING } from './songs/un-altro-me-stesso'
+
+// The songs the band can play. Each one is a file of tools/songs, rendered by
+// tools/render.mjs into the audio of each pair of sound profile and voice style
+// it declares (audio/) and its timing (hooks/songs/): seconds from the start of
+// the clip, which the stage follows, the same in every pair.
 export type Syllable = { text: string; start: number; end: number; open: number }
 export type Line = { start: number; end: number; syls: Syllable[] }
-export type Song = {
+export type Timing = {
+  bpm: number
   beat: number
   bar: number
   duration: number
   outroAt: number
   bloomAt: number
   finaleAt: number
+  // When the bass and the drums enter, for a song that builds up its own way;
+  // absent, the fixed form (bars 2 and 6).
+  bassAt?: number
+  drumsAt?: number
   lines: Line[]
 }
 
-export const SONG: Song = {
-  beat: 0.78947,
-  bar: 3.15789,
-  duration: 54.026,
-  outroAt: 44.211,
-  bloomAt: 25.263,
-  finaleAt: 31.579,
-  lines: [
-    { start: 6.316, end: 12.632, syls: [
-      { text: "So", start: 6.316, end: 6.711, open: 0.75 },
-      { text: "no ", start: 6.711, end: 7.105, open: 0.75 },
-      { text: "so", start: 7.105, end: 7.5, open: 0.75 },
-      { text: "lo un ", start: 7.5, end: 7.895, open: 0.75 },
-      { text: "Clau", start: 7.895, end: 9.079, open: 1 },
-      { text: "de, ", start: 9.079, end: 9.474, open: 0.75 },
-      { text: "ma ", start: 9.474, end: 9.868, open: 1 },
-      { text: "sta", start: 9.868, end: 10.263, open: 1 },
-      { text: "se", start: 10.263, end: 10.658, open: 0.75 },
-      { text: "ra ", start: 10.658, end: 11.053, open: 1 },
-      { text: "can", start: 11.053, end: 11.842, open: 1 },
-      { text: "to", start: 11.842, end: 12.632, open: 0.75 },
-    ] },
-    { start: 12.632, end: 18.947, syls: [
-      { text: "con ", start: 12.632, end: 13.026, open: 0.75 },
-      { text: "un ", start: 13.026, end: 13.421, open: 0.5 },
-      { text: "fio", start: 13.421, end: 13.816, open: 0.75 },
-      { text: "re in ", start: 13.816, end: 14.211, open: 0.75 },
-      { text: "ma", start: 14.211, end: 15, open: 1 },
-      { text: "no, ", start: 15, end: 15.789, open: 0.75 },
-      { text: "so", start: 15.789, end: 16.184, open: 0.75 },
-      { text: "lo ", start: 16.184, end: 16.579, open: 0.75 },
-      { text: "per ", start: 16.579, end: 17.368, open: 0.75 },
-      { text: "te", start: 17.368, end: 18.947, open: 0.75 },
-    ] },
-    { start: 18.947, end: 25.263, syls: [
-      { text: "qual", start: 18.947, end: 19.342, open: 1 },
-      { text: "cu", start: 19.342, end: 19.737, open: 0.5 },
-      { text: "no ", start: 19.737, end: 20.132, open: 0.75 },
-      { text: "mi ha ", start: 20.132, end: 20.526, open: 1 },
-      { text: "chie", start: 20.526, end: 21.316, open: 0.75 },
-      { text: "sto ", start: 21.316, end: 21.711, open: 0.75 },
-      { text: "di ", start: 21.711, end: 22.105, open: 0.5 },
-      { text: "dir", start: 22.105, end: 22.895, open: 0.5 },
-      { text: "te", start: 22.895, end: 23.289, open: 0.75 },
-      { text: "lo ", start: 23.289, end: 23.684, open: 0.75 },
-      { text: "pia", start: 23.684, end: 24.474, open: 1 },
-      { text: "no", start: 24.474, end: 25.263, open: 0.75 },
-    ] },
-    { start: 25.263, end: 31.579, syls: [
-      { text: "e ", start: 25.263, end: 25.658, open: 0.75 },
-      { text: "can", start: 25.658, end: 26.447, open: 1 },
-      { text: "to, ", start: 26.447, end: 26.842, open: 0.75 },
-      { text: "e ", start: 26.842, end: 27.237, open: 0.75 },
-      { text: "can", start: 27.237, end: 28.026, open: 1 },
-      { text: "to, ", start: 28.026, end: 28.421, open: 0.75 },
-      { text: "per ", start: 28.421, end: 28.816, open: 0.75 },
-      { text: "que", start: 28.816, end: 29.211, open: 0.75 },
-      { text: "sto ", start: 29.211, end: 29.605, open: 0.75 },
-      { text: "fio", start: 29.605, end: 30, open: 0.75 },
-      { text: "re ", start: 30, end: 30.395, open: 0.75 },
-      { text: "che ", start: 30.395, end: 30.789, open: 0.75 },
-      { text: "c'è", start: 30.789, end: 31.579, open: 0.75 },
-    ] },
-    { start: 31.579, end: 37.105, syls: [
-      { text: "e ", start: 31.579, end: 31.974, open: 0.75 },
-      { text: "can", start: 31.974, end: 33.158, open: 1 },
-      { text: "to… ", start: 33.158, end: 33.947, open: 0.75 },
-      { text: "e ", start: 34.737, end: 35.132, open: 0.75 },
-      { text: "can", start: 35.132, end: 36.316, open: 1 },
-      { text: "to…", start: 36.316, end: 37.105, open: 0.75 },
-    ] },
-    { start: 37.895, end: 44.211, syls: [
-      { text: "per ", start: 37.895, end: 38.289, open: 0.75 },
-      { text: "que", start: 38.289, end: 38.684, open: 0.75 },
-      { text: "sto ", start: 38.684, end: 39.079, open: 0.75 },
-      { text: "fio", start: 39.079, end: 39.474, open: 0.75 },
-      { text: "re ", start: 39.474, end: 39.868, open: 0.75 },
-      { text: "che ", start: 39.868, end: 40.263, open: 0.75 },
-      { text: "c'è", start: 40.263, end: 44.211, open: 0.75 },
-    ] },
-  ],
+// The technical side of a song, picked per song in the band's settings: how it
+// is played (its sound profile, defined in tools/synth.mjs) and how it is sung
+// (its voice style). A song is rendered in the pairs its file in tools/songs
+// declares, and in no other: the menus offer exactly those, in this order.
+export type VoiceId = 'classico' | 'avanzato'
+export type SoundId = 'pop' | 'plettro' | 'dita'
+export type Voices = Partial<Record<VoiceId, string>>
+export type Sounds = Partial<Record<SoundId, Voices>>
+export const VOICE_STYLES: readonly { id: VoiceId; label: string }[] = [
+  { id: 'classico', label: 'Classico' },
+  { id: 'avanzato', label: 'Avanzato' },
+]
+export const SOUND_PROFILES: readonly { id: SoundId; label: string }[] = [
+  { id: 'pop', label: 'Band' },
+  { id: 'plettro', label: 'Plettro' },
+  { id: 'dita', label: 'Dita' },
+]
+
+// The collections (albums) the songs are gathered in, in the menu's order: the
+// band's own songs, played in its club; HANA, songs of the SAP world, played in
+// a data center; Odissea, songs of the ancient world and of its philosophers,
+// played in a temple; and MDO, the Serenata's own love story, played on an
+// evening of its own. The ambiences are in hooks/ambiences.
+export type CollectionId = 'band' | 'hana' | 'odissea' | 'mdo'
+export type AmbienceId = 'club' | 'datacenter' | 'antico' | 'serata'
+export const COLLECTIONS: readonly { id: CollectionId; label: string; ambience: AmbienceId }[] = [
+  { id: 'band', label: 'La band', ambience: 'club' },
+  { id: 'hana', label: 'HANA', ambience: 'datacenter' },
+  { id: 'odissea', label: 'Odissea', ambience: 'antico' },
+  { id: 'mdo', label: 'MDO', ambience: 'serata' },
+]
+
+// The sceneries of hooks/sets, by name.
+export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio'
+
+export type Song = Timing & {
+  // Its address in the menus, in /canta and in the store: short, never reused.
+  id: string
+  // What the menu shows.
+  title: string
+  collection: CollectionId
+  // What stands on the stage around the band while it plays.
+  scenery: SceneryId
+  // Its sound profiles, and the voice styles of each with its audio file.
+  audio: Sounds
+  // Where its words come from, when they follow a text: author, work, passage.
+  source?: string
+}
+
+// The first song, written for the mod.
+const SERENATA: Song = { id: 'serenata', title: 'Serenata', collection: 'band', scenery: 'rosa', audio: SERENATA_AUDIO, ...SERENATA_TIMING }
+
+export const SONGS: readonly Song[] = [
+  SERENATA,
+  { id: 'canzone-2', title: 'Tutto pronto', collection: 'band', scenery: 'codice', audio: TUTTO_PRONTO_AUDIO, ...TUTTO_PRONTO_TIMING },
+  // Its id is the placeholder's that held its place: whoever picked that one finds this.
+  { id: 'canzone-3', title: 'Go-live', collection: 'band', scenery: 'golive', audio: GO_LIVE_AUDIO, ...GO_LIVE_TIMING },
+  { id: 'hana-di-notte', title: 'HANA di notte', collection: 'hana', scenery: 'hana', audio: HANA_DI_NOTTE_AUDIO, ...HANA_DI_NOTTE_TIMING },
+  {
+    id: 'odissea',
+    title: 'Odissea',
+    collection: 'odissea',
+    scenery: 'tempio',
+    audio: ODISSEA_AUDIO,
+    source: "Omaggio a Omero: il «mare color del vino» è un suo epiteto, l'invocazione alla Musa apre l'Odissea (I, 1)",
+    ...ODISSEA_TIMING,
+  },
+  {
+    id: 'dipende-da-me',
+    title: 'Dipende da me',
+    collection: 'odissea',
+    scenery: 'stoa',
+    audio: DIPENDE_DA_ME_AUDIO,
+    source: 'Epitteto, Manuale (Enchiridion), capitolo 1',
+    ...DIPENDE_DA_ME_TIMING,
+  },
+  {
+    id: 'so-di-non-sapere',
+    title: 'So di non sapere',
+    collection: 'odissea',
+    scenery: 'delfi',
+    audio: SO_DI_NON_SAPERE_AUDIO,
+    source: 'Platone, Apologia di Socrate 21a–d (il titolo è la sintesi tradizionale, non le parole di Platone)',
+    ...SO_DI_NON_SAPERE_TIMING,
+  },
+  {
+    id: 'un-altro-me-stesso',
+    title: 'Un altro me stesso',
+    collection: 'odissea',
+    scenery: 'liceo',
+    audio: UN_ALTRO_ME_STESSO_AUDIO,
+    source: 'Aristotele, Etica Nicomachea VIII 1 (1155a) e IX 4 (1166a)',
+    ...UN_ALTRO_ME_STESSO_TIMING,
+  },
+  // The Serenata's sequel, the first of its own album: three acronyms, spelled
+  // out, that belong to it.
+  { id: 'in-principio', title: 'In principio fu il MAV', collection: 'mdo', scenery: 'principio', audio: IN_PRINCIPIO_AUDIO, ...IN_PRINCIPIO_TIMING },
+]
+
+// The song with this id, or the first one when no song has it any more.
+export function songOf(id: string | null | undefined): Song {
+  return SONGS.find(song => song.id === id) ?? SERENATA
+}
+
+// The ambience a song is played in: its collection's.
+export function ambienceOf(song: Song): AmbienceId {
+  return COLLECTIONS.find(c => c.id === song.collection)?.ambience ?? 'club'
+}
+
+// The songs of a collection, in the order of SONGS.
+export function songsIn(collection: CollectionId): Song[] {
+  return SONGS.filter(song => song.collection === collection)
+}
+
+// The collections that hold at least one song.
+export function collectionsInUse(): CollectionId[] {
+  return COLLECTIONS.map(c => c.id).filter(id => songsIn(id).length > 0)
+}
+
+// The sound profiles a song is played in, in the menu's order.
+export function soundsOf(song: Song): SoundId[] {
+  return SOUND_PROFILES.map(p => p.id).filter(id => song.audio[id] !== undefined)
+}
+
+// The profile a song is played in: the one picked for it, while the song has
+// it, else its first.
+export function soundOf(song: Song, picked: string | undefined): SoundId {
+  const sounds = soundsOf(song)
+  return sounds.find(id => id === picked) ?? sounds[0] ?? 'pop'
+}
+
+// The voice styles a song is sung in, in one of its profiles, in the menu's order.
+export function voicesOf(song: Song, sound: SoundId): VoiceId[] {
+  const voices = song.audio[sound] ?? {}
+  return VOICE_STYLES.map(style => style.id).filter(id => voices[id] !== undefined)
+}
+
+// The style a song is sung in, in a profile: the one picked for it, while that
+// profile has it, else the profile's first.
+export function voiceOf(song: Song, sound: SoundId, picked: string | undefined): VoiceId {
+  const styles = voicesOf(song, sound)
+  return styles.find(id => id === picked) ?? styles[0] ?? 'classico'
+}
+
+// The audio of a song in a profile and a style, or its first audio of all.
+export function assetOf(song: Song, sound: SoundId, voice: VoiceId): string {
+  return song.audio[sound]?.[voice] ?? Object.values(song.audio).flatMap(v => Object.values(v ?? {}))[0] ?? ''
+}
+
+// Whether a song has anything to set: more than one profile, or more than one
+// style in the profile it is played in.
+export function hasSettings(song: Song, sound: SoundId): boolean {
+  return soundsOf(song).length > 1 || voicesOf(song, sound).length > 1
 }

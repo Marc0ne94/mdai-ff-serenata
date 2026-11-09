@@ -1,8 +1,8 @@
 {
   "name": "serenata",
   "displayName": "Serenata",
-  "version": "0.1.7",
-  "description": "A pixel-art band of Claudes plays above your prompt while a rose blooms",
+  "version": "0.3.0",
+  "description": "A pixel-art band of Claudes plays songs above your prompt, each with its own scenery",
   "author": {
     "name": "Marco Dall'Olio"
   },

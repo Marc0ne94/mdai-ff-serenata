@@ -1,4 +1,12 @@
+import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
+
+import { band } from '../hooks/scene'
+import { SCENERIES } from '../hooks/sets'
+import { flight } from '../hooks/sets/codice'
+import { PROFILES, STYLES } from '../tools/profiles.mjs'
+import type { Song } from '../hooks/song'
+import { ambienceOf, assetOf, hasSettings, SONGS, songsIn, SOUND_PROFILES, soundOf, soundsOf, VOICE_STYLES, voiceOf, voicesOf } from '../hooks/song'
 
 const BAND = {
   plugin: 'serenata',
@@ -12,6 +20,14 @@ const BAND = {
     view: {},
   },
 } as const
+
+// A command as the person types it at the prompt.
+const typed = (command: string, args = '') => ({
+  command,
+  args,
+  origin: { kind: 'composer' },
+  presentation: { isFullscreen: false, columns: 80 },
+}) as const
 
 test('Canta in the band plays the song and draws the stage', async ($, on) => {
   const clock = mock.clock(on, { now: 1000 })
@@ -45,7 +61,9 @@ test('Canta in the band plays the song and draws the stage', async ($, on) => {
   // No subtitles on the stage, the signature in its corner, the band's width.
   expect(stage).not.toContain('qualcuno')
   expect(stage).toContain('M2V-MDO')
-  expect((await ui.findAll({ type: 'Svg' })).find(svg => String(svg.props.source).includes('<!-- run'))?.props.width).toBe(640)
+  const drawn = (await ui.findAll({ type: 'Svg' })).find(svg => String(svg.props.source).includes('<!-- run'))?.props
+  // 80 cells: 85 × 8.5 − 16 = 706 pixels, the smaller reading; the stage's proportions.
+  expect([drawn?.width, drawn?.height]).toEqual([706, 146])
   expect(stage.length).toBeLessThan(131072)
 
   // Ancora clears the stage, then draws a new one that starts from the beginning.
@@ -71,13 +89,13 @@ test('/serenata off hides the band and /serenata on brings it back', async ($, o
     return <Text>engine</Text>
   })
 
-  expect((await $.command.run({ command: 'serenata', args: 'off' })).text).toContain('spenta')
+  expect((await $.command.run(typed('serenata', 'off'))).text).toContain('spenta')
   const hidden = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await hidden.find({ key: 'sing' })).toBeUndefined()
   expect((await hidden.find({ type: 'Text' }))?.text).toBe('engine')
   await hidden.unmount()
 
-  expect((await $.command.run({ command: 'serenata', args: 'on' })).text).toContain('accesa')
+  expect((await $.command.run(typed('serenata', 'on'))).text).toContain('accesa')
   const shown = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await shown.find({ key: 'sing' })).toBeDefined()
   await shown.unmount()
@@ -89,5 +107,594 @@ test('the terminal band offers the song in one row', async ($, on) => {
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: /Claude canta/ })).toBeDefined()
   expect(await ui.find({ key: 'sing' })).toBeDefined()
+  // The terminal says the menus in words.
+  expect((await ui.find({ key: 'collection' }))?.props.label).toBe('Raccolta:')
+  expect((await ui.find({ key: 'song' }))?.props.label).toBe('Canzone:')
   await ui.unmount()
+})
+
+// A store in memory the test can look into, as the engine keeps the mod's own.
+function storeIn(on: On, entries: Record<string, unknown> = {}) {
+  const memory: Record<string, unknown> = { ...entries }
+  on('store.get', (_, e) => ({ value: memory[e.key] }))
+  on('store.set', (_, e) => {
+    memory[e.key] = e.value
+
+    return { value: undefined }
+  })
+
+  return memory
+}
+
+// The song a stage is drawn for, from the comment band() writes into it.
+const songOnStage = async (ui: { findAll: (q: { type: string }) => Promise<{ props: Record<string, unknown> }[]> }) =>
+  (await ui.findAll({ type: 'Svg' }))
+    .map(svg => String(svg.props.source))
+    .map(source => /<!-- song (\S+) -->/.exec(source)?.[1])
+    .find(Boolean)
+
+test('the menus list the collections and the songs of the picked one, beside Canta and beside Ancora and Stop', async ($, on) => {
+  const clock = mock.clock(on)
+  on('audio.play', () => ({ value: undefined }))
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const collection = await ui.find({ key: 'collection' })
+  expect(collection?.type).toBe('Select')
+  expect((collection?.props.options as { value: string }[]).map(o => o.value)).toEqual(['band', 'hana', 'odissea', 'mdo'])
+  expect(collection?.props.value).toBe('band')
+  const quiet = await ui.find({ key: 'song' })
+  expect(quiet?.type).toBe('Select')
+  expect((quiet?.props.options as { value: string }[]).map(o => o.value)).toEqual(['serenata', 'canzone-2', 'canzone-3'])
+  expect(quiet?.props.value).toBe('serenata')
+
+  await ui.press({ key: 'sing' })
+  await clock.advance(1300)
+  expect(await ui.find({ key: 'stop' })).toBeDefined()
+  expect((await ui.find({ key: 'song' }))?.type).toBe('Select')
+  await ui.unmount()
+})
+
+test('picking a song while the band plays starts it from the beginning', async ($, on) => {
+  const clock = mock.clock(on, { now: 1000 })
+  const memory = storeIn(on)
+  const played: string[] = []
+  on('audio.play', (_, e) => {
+    played.push(String(e.clip.asset))
+
+    return { value: undefined }
+  })
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'sing' })
+  await clock.advance(1300)
+  expect(await songOnStage(ui)).toBe('serenata')
+
+  await ui.select({ key: 'song', value: 'canzone-2' })
+  // The old stage goes at once, the new one comes with its audio.
+  expect(await songOnStage(ui)).toBeUndefined()
+  await clock.advance(200)
+  expect(await songOnStage(ui)).toBe('canzone-2')
+  expect(played).toHaveLength(2)
+  expect((await ui.find({ key: 'song' }))?.props.value).toBe('canzone-2')
+  expect(memory.songId).toBe('canzone-2')
+  await ui.unmount()
+})
+
+test('picking a song while the band is quiet plays nothing', async ($, on) => {
+  const clock = mock.clock(on)
+  mock.store(on)
+  const played: string[] = []
+  on('audio.play', (_, e) => {
+    played.push(String(e.clip.asset))
+
+    return { value: undefined }
+  })
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.select({ key: 'song', value: 'canzone-3' })
+  await clock.advance(2000)
+  expect(played).toEqual([])
+  expect(await songOnStage(ui)).toBeUndefined()
+  expect((await ui.find({ key: 'song' }))?.props.value).toBe('canzone-3')
+
+  // Canta then plays the picked song.
+  await ui.press({ key: 'sing' })
+  await clock.advance(1300)
+  expect(await songOnStage(ui)).toBe('canzone-3')
+  await ui.unmount()
+})
+
+test('/canta picks a song by number or by name, and lists them for anything else', async ($, on) => {
+  const clock = mock.clock(on)
+  mock.store(on)
+  const played: string[] = []
+  on('audio.play', (_, e) => {
+    played.push(String(e.clip.asset))
+
+    return { value: undefined }
+  })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+
+  expect((await $.command.run(typed('canta', '2'))).text).toContain('Tutto pronto')
+  await clock.advance(1300)
+  expect(await songOnStage(ui)).toBe('canzone-2')
+  // Each song plays its own audio.
+  expect(played).toEqual(['audio/tutto-pronto.m4a'])
+
+  expect((await $.command.run(typed('canta', 'Serenata'))).text).toContain('Serenata')
+  await clock.advance(200)
+  expect(await songOnStage(ui)).toBe('serenata')
+  expect(played).toEqual(['audio/tutto-pronto.m4a', 'audio/canzone.m4a'])
+
+  // An unknown song changes nothing: the band keeps singing what it sang.
+  for (const arg of [String(SONGS.length + 1), '0', 'boh', '-1']) {
+    const { text } = await $.command.run(typed('canta', arg))
+    expect(text).toContain('Non conosco')
+    expect(text).toContain('1. Serenata')
+  }
+  await clock.advance(200)
+  expect(await songOnStage(ui)).toBe('serenata')
+  expect(played).toHaveLength(2)
+
+  // Without a name it sings the picked song again.
+  expect((await $.command.run(typed('canta'))).text).toContain('Serenata')
+  await ui.unmount()
+})
+
+test('a session starts with the song picked last time, or the first if it is gone', async ($, on) => {
+  mock.clock(on)
+  const memory = storeIn(on, { songId: 'canzone-3' })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  // The engine's side of registering /serenata and /canta.
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await ui.find({ key: 'song' }))?.props.value).toBe('canzone-3')
+  await ui.unmount()
+
+  memory.songId = 'una-canzone-tolta'
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const again = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await again.find({ key: 'song' }))?.props.value).toBe('serenata')
+  await again.unmount()
+})
+
+test('the terminal band has the menu too', async ($, on) => {
+  mock.clock(on)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ key: 'song' }))?.type).toBe('Select')
+  await ui.unmount()
+})
+
+// Two times the same to the millisecond the timing files are rounded to.
+const near = (a: number, b: number) => Math.abs(a - b) < 0.005
+
+test('every song keeps the form the stage follows', () => {
+  const ids = SONGS.map(song => song.id)
+  expect(new Set(ids).size).toBe(ids.length)
+  const assets = SONGS.flatMap(song => soundsOf(song).flatMap(sound => voicesOf(song, sound).map(voice => assetOf(song, sound, voice))))
+  // Every audio file belongs to one pair of one song.
+  expect(new Set(assets).size).toBe(assets.length)
+  for (const song of SONGS) {
+    // At least one profile with at least one voice style, each pair with its audio.
+    expect(soundsOf(song).length).toBeGreaterThan(0)
+    for (const sound of soundsOf(song)) {
+      expect(voicesOf(song, sound).length).toBeGreaterThan(0)
+      for (const voice of voicesOf(song, sound)) expect(assetOf(song, sound, voice)).toMatch(/^audio\/[a-z0-9-]+\.m4a$/)
+    }
+    expect(near(song.bar, 4 * song.beat)).toBe(true)
+    // Six lines of two bars from bar 2; the rose blooms at the 4th, the finale at the 5th.
+    expect(song.lines).toHaveLength(6)
+    song.lines.forEach((line, i) => expect(near(line.start, (2 + 2 * i) * song.bar)).toBe(true))
+    expect(song.bloomAt).toBe(song.lines[3]?.start)
+    expect(song.finaleAt).toBe(song.lines[4]?.start)
+    expect(near(song.outroAt, 14 * song.bar)).toBe(true)
+    expect(song.duration).toBeGreaterThan(song.outroAt)
+    for (const line of song.lines) {
+      for (const syl of line.syls) {
+        expect(syl.end).toBeGreaterThan(syl.start)
+        expect(syl.end).toBeLessThanOrEqual(song.outroAt + 0.001)
+      }
+    }
+    // The surface draws no Svg past 131,072 characters.
+    expect(band(1, song).length).toBeLessThan(131072)
+  }
+})
+
+test('every scenery fits the stage, and each song draws its own', () => {
+  for (const [name, scenery] of Object.entries(SCENERIES)) {
+    // The gadget's grid puts the hand where the singer's arm is.
+    expect(scenery.gadget.pixels).toHaveLength(15)
+    for (const row of scenery.gadget.pixels) {
+      expect(row).toHaveLength(9)
+      for (const c of row) if (c !== '.') expect(scenery.gadget.colors[c]).toBeDefined()
+    }
+    // Its own ids start with its name, so two sceneries never clash.
+    for (const [, id] of (scenery.defs ?? '').matchAll(/id="([^"]+)"/g)) expect(id?.startsWith(name)).toBe(true)
+  }
+  const stageOf = (id: string) => band(1, SONGS.find(song => song.id === id) ?? SONGS[0]!)
+  expect(stageOf('serenata')).toContain('CLAUDE CANTA')
+  expect(stageOf('serenata')).not.toContain('codiceGlow')
+  expect(stageOf('canzone-2')).toContain('TUTTO PRONTO')
+  expect(stageOf('canzone-2')).toContain('url(#codiceGlow)')
+  expect(stageOf('canzone-2')).toContain('FATTO')
+  expect(stageOf('canzone-3')).toContain('GO-LIVE')
+  expect(stageOf('canzone-3')).toContain('url(#goliveGlow)')
+  expect(stageOf('canzone-3')).toContain('>PRD<')
+  expect(stageOf('odissea')).toContain('ODISSEA')
+  expect(stageOf('odissea')).toContain('url(#tempioSky)')
+  expect(stageOf('dipende-da-me')).toContain('DIPENDE DA ME')
+  expect(stageOf('hana-di-notte')).toContain('HANA DI NOTTE')
+  expect(stageOf('in-principio')).toContain('IN PRINCIPIO FU IL MAV')
+  expect(stageOf('in-principio')).toContain('>M4V<')
+  expect(stageOf('so-di-non-sapere')).toContain('SO DI NON SAPERE')
+  expect(stageOf('un-altro-me-stesso')).toContain('UN ALTRO ME STESSO')
+  expect(stageOf('un-altro-me-stesso')).toContain('url(#liceoSky)')
+  // Every song of the classical album names where its words come from.
+  for (const song of SONGS.filter(s => s.collection === 'odissea')) expect(song.source?.length).toBeGreaterThan(10)
+  expect(stageOf('so-di-non-sapere')).toContain('url(#delfiSky)')
+  expect(SONGS.find(s => s.id === 'so-di-non-sapere')?.source).toContain('Apologia')
+  expect(stageOf('hana-di-notte')).toContain('url(#hanaDawn)')
+  expect(stageOf('dipende-da-me')).toContain('url(#stoaStorm)')
+  // A song whose words follow a text names it.
+  expect(SONGS.find(s => s.id === 'dipende-da-me')?.source).toContain('Epitteto')
+})
+
+test('the settings sit at the right, only for a song with a choice, and each song keeps its own', async ($, on) => {
+  const clock = mock.clock(on, { now: 1000 })
+  const memory = storeIn(on)
+  const played: string[] = []
+  on('audio.play', (_, e) => {
+    played.push(String(e.clip.asset))
+
+    return { value: undefined }
+  })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const voice = async () => (await ui.find({ key: 'voice' }))?.props
+
+  // The Serenata has nothing to set: no settings at all.
+  expect(await ui.find({ key: 'settings' })).toBeUndefined()
+
+  // Go-live is sung in two styles: the settings are there, hidden until asked.
+  await ui.select({ key: 'song', value: 'canzone-3' })
+  expect(await ui.find({ key: 'voice' })).toBeUndefined()
+  expect((await ui.find({ key: 'settings' }))?.props.label).toBe('⚙ Impostazioni')
+  await ui.press({ key: 'settings' })
+  // On the desktop a glyph labels each menu, so the row fits beside the stage.
+  expect((await ui.find({ key: 'settings' }))?.props.label).toBe('⚙')
+  expect(memory.showSettings).toBe(true)
+  expect((await voice())?.label).toBe('🎤')
+  expect(((await voice())?.options as { value: string }[]).map(o => o.value)).toEqual(['classico', 'avanzato'])
+  expect((await voice())?.value).toBe('classico')
+  // The band's songs are played in one profile only: no sound menu for them.
+  expect(await ui.find({ key: 'sound' })).toBeUndefined()
+
+  // Avanzato for Go-live, while it plays: it starts again in that style.
+  await ui.press({ key: 'sing' })
+  await clock.advance(1300)
+  await ui.select({ key: 'voice', value: 'avanzato' })
+  await clock.advance(200)
+  expect(played).toEqual(['audio/go-live.m4a', 'audio/go-live-avanzato.m4a'])
+  expect(await songOnStage(ui)).toBe('canzone-3')
+
+  // The Serenata plays as it is, with no menus.
+  await ui.select({ key: 'song', value: 'serenata' })
+  await clock.advance(200)
+  expect(await ui.find({ key: 'voice' })).toBeUndefined()
+  expect(played.at(-1)).toBe('audio/canzone.m4a')
+
+  // Back to Go-live: Avanzato again, and remembered for the next sessions.
+  await ui.select({ key: 'song', value: 'canzone-3' })
+  await clock.advance(200)
+  expect((await voice())?.value).toBe('avanzato')
+  expect(played.at(-1)).toBe('audio/go-live-avanzato.m4a')
+  expect(memory.voices).toEqual({ 'canzone-3': 'avanzato' })
+
+  // Hidden again: the menus go, the choices stay.
+  await ui.press({ key: 'settings' })
+  expect(await ui.find({ key: 'voice' })).toBeUndefined()
+  expect(memory.showSettings).toBe(false)
+  await ui.unmount()
+})
+
+test('a session starts with the style of each song from last time, skipping what is not a style', async ($, on) => {
+  mock.clock(on)
+  storeIn(on, { songId: 'canzone-3', showSettings: true, voices: { 'canzone-3': 'avanzato', serenata: 42, altro: 'boh' } })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await ui.find({ key: 'voice' }))?.props.value).toBe('avanzato')
+  await ui.select({ key: 'collection', value: 'odissea' })
+  expect((await ui.find({ key: 'voice' }))?.props.value).toBe('classico')
+  await ui.unmount()
+})
+
+test('a profile or a style a song does not declare is never offered nor played', () => {
+  const base = SONGS[0]!
+  const only: Song = { ...base, audio: { dita: { avanzato: 'audio/solo-avanzato.m4a' } } }
+  expect(soundsOf(only)).toEqual(['dita'])
+  expect(voicesOf(only, 'dita')).toEqual(['avanzato'])
+  // What is picked elsewhere, or nothing, falls back to the song's first.
+  expect(soundOf(only, 'pop')).toBe('dita')
+  expect(voiceOf(only, 'dita', 'classico')).toBe('avanzato')
+  expect(voiceOf(only, 'dita', undefined)).toBe('avanzato')
+  expect(assetOf(only, soundOf(only, 'pop'), voiceOf(only, 'dita', 'classico'))).toBe('audio/solo-avanzato.m4a')
+  expect(voiceOf(base, 'pop', 'nessuno')).toBe('classico')
+  // Nothing to set, no settings: one profile, one style.
+  expect(hasSettings(only, 'dita')).toBe(false)
+  expect(hasSettings(base, 'pop')).toBe(false)
+  expect(hasSettings(SONGS.find(s => s.id === 'canzone-3')!, 'pop')).toBe(true)
+})
+
+test('the terminal band has the collections and the settings too', async ($, on) => {
+  mock.clock(on)
+  mock.store(on)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ key: 'collection' }))?.type).toBe('Select')
+  await ui.select({ key: 'song', value: 'canzone-3' })
+  await ui.press({ key: 'settings' })
+  expect((await ui.find({ key: 'voice' }))?.type).toBe('Select')
+  await ui.unmount()
+})
+
+test('picking a collection plays its song picked last, or its first', async ($, on) => {
+  const clock = mock.clock(on, { now: 1000 })
+  const memory = storeIn(on)
+  const played: string[] = []
+  on('audio.play', (_, e) => {
+    played.push(String(e.clip.asset))
+
+    return { value: undefined }
+  })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const options = async () => ((await ui.find({ key: 'song' }))?.props.options as { value: string }[]).map(o => o.value)
+
+  // Go-live in the band, then to Odissea: its first song, and only its songs in the menu.
+  await ui.select({ key: 'song', value: 'canzone-3' })
+  await ui.press({ key: 'sing' })
+  await clock.advance(1300)
+  await ui.select({ key: 'collection', value: 'odissea' })
+  await clock.advance(200)
+  expect(await songOnStage(ui)).toBe('odissea')
+  expect((await ui.find({ key: 'collection' }))?.props.value).toBe('odissea')
+  expect(await options()).toEqual(songsIn('odissea').map(s => s.id))
+
+  // Back to the band: Go-live again, the song picked last there.
+  await ui.select({ key: 'collection', value: 'band' })
+  await clock.advance(200)
+  expect(await songOnStage(ui)).toBe('canzone-3')
+  expect(memory.lastSongs).toEqual({ band: 'canzone-3', odissea: 'odissea' })
+  expect(played).toEqual(['audio/go-live.m4a', 'audio/odissea.m4a', 'audio/go-live.m4a'])
+
+  // A collection that is not one changes nothing.
+  await ui.select({ key: 'collection', value: 'nessuna' })
+  expect((await ui.find({ key: 'song' }))?.props.value).toBe('canzone-3')
+  await ui.unmount()
+})
+
+test('Odissea is played with a plectrum or with the fingertips, each song keeping its own', async ($, on) => {
+  const clock = mock.clock(on, { now: 1000 })
+  const memory = storeIn(on, { showSettings: true })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  const played: string[] = []
+  on('audio.play', (_, e) => {
+    played.push(String(e.clip.asset))
+
+    return { value: undefined }
+  })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+
+  await ui.select({ key: 'collection', value: 'odissea' })
+  const sound = await ui.find({ key: 'sound' })
+  expect(sound?.props.label).toBe('🎸')
+  expect((sound?.props.options as { value: string; label: string }[]).map(o => o.label)).toEqual(['Plettro', 'Dita'])
+  expect(sound?.props.value).toBe('plettro')
+
+  // Dita and Avanzato together, while it plays: their own file.
+  await ui.press({ key: 'sing' })
+  await clock.advance(1300)
+  await ui.select({ key: 'sound', value: 'dita' })
+  await clock.advance(200)
+  await ui.select({ key: 'voice', value: 'avanzato' })
+  await clock.advance(200)
+  expect(played).toEqual(['audio/odissea.m4a', 'audio/odissea-dita.m4a', 'audio/odissea-dita-avanzato.m4a'])
+  expect(memory.sounds).toEqual({ odissea: 'dita' })
+
+  // Back in the band, the Serenata: nothing to set, no menus.
+  await ui.select({ key: 'collection', value: 'band' })
+  expect(await ui.find({ key: 'sound' })).toBeUndefined()
+  expect(await ui.find({ key: 'voice' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('the rocket flies over the band and lands on the board', () => {
+  const song = SONGS.find(s => s.scenery === 'codice')!
+  const f = flight(song)
+  const first = f.points[0]!
+  const last = f.points[f.points.length - 1]!
+  // From the screen to the board, waving once every two beats of its flight.
+  expect(first).toEqual({ x: 430, y: 152.6 })
+  expect(near(last.x, 1014) && near(last.y, 59)).toBe(true)
+  expect(f.waves).toBe(Math.round(f.dur / (2 * song.beat)))
+  // Over the singer's head (its top at 134) and the drummer's (72, on the riser).
+  for (const p of f.points) {
+    if (p.x >= 490 && p.x <= 590) expect(p.y).toBeLessThan(124)
+    if (p.x >= 665 && p.x <= 735) expect(p.y).toBeLessThan(66)
+  }
+  // It takes off after the check and hits the board as the closing words light up.
+  expect(f.start).toBeGreaterThan(song.finaleAt)
+  expect(near(f.start + f.dur, song.outroAt)).toBe(true)
+  // The stage still fits, and the rocket is on it; the Serenata has none.
+  const stage = band(1, song)
+  expect(stage).toContain('<animateMotion')
+  expect(stage).toContain('pointer-events="none"')
+  expect(band(1, SONGS[0]!)).not.toContain('<animateMotion')
+})
+
+test('the band offers the profiles and styles the tools render, in the same order', () => {
+  expect(SOUND_PROFILES.map(p => p.id)).toEqual(Object.keys(PROFILES))
+  expect(VOICE_STYLES.map(s => s.id)).toEqual(STYLES)
+})
+
+// Records each clip played and whether it was stopped, as the host's player would see it.
+function player(on: On) {
+  const plays: { asset: string; signal: AbortSignal }[] = []
+  // Each clip plays until it is stopped, as a real one does until its end.
+  on('audio.play', (_, e, next) => {
+    plays.push({ asset: String(e.clip.asset), signal: next.signal })
+
+    return new Promise(resolve => next.signal.addEventListener('abort', () => resolve({ value: undefined })))
+  })
+
+  return plays
+}
+
+test('a song that ends by itself leaves the band quiet: picking a song then plays nothing', async ($, on) => {
+  const clock = mock.clock(on, { now: 1000 })
+  mock.store(on)
+  const plays = player(on)
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'sing' })
+  await clock.advance(1300)
+  expect(plays).toHaveLength(1)
+
+  // The Serenata lasts 54 s: after it the stage keeps its last frame, and a pick plays nothing.
+  await clock.advance(55_000)
+  expect(await songOnStage(ui)).toBe('serenata')
+  await ui.select({ key: 'song', value: 'canzone-2' })
+  await clock.advance(2000)
+  expect(plays).toHaveLength(1)
+  await ui.unmount()
+
+  // The terminal shows the quiet row again, with Canta.
+  const row = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await row.find({ key: 'sing' })).toBeDefined()
+  expect(await row.find({ key: 'stop' })).toBeUndefined()
+  await row.unmount()
+})
+
+test('Stop and Ancora stop the clip that was playing', async ($, on) => {
+  const clock = mock.clock(on, { now: 1000 })
+  const plays = player(on)
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'sing' })
+  await clock.advance(1300)
+  await ui.press({ key: 'sing' })
+  await clock.advance(200)
+  expect(plays.map(p => p.signal.aborted)).toEqual([true, false])
+  await ui.press({ key: 'stop' })
+  expect(plays.map(p => p.signal.aborted)).toEqual([true, true])
+  await ui.unmount()
+})
+
+test('two starts at once play one song', async ($, on) => {
+  const clock = mock.clock(on, { now: 1000 })
+  mock.store(on)
+  const plays = player(on)
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+
+  await Promise.all([ui.press({ key: 'sing' }), $.command.run(typed('canta'))])
+  await clock.advance(2500)
+  expect(plays.filter(p => !p.signal.aborted)).toHaveLength(1)
+  expect(plays).toHaveLength(1)
+  await ui.unmount()
+})
+
+test('/canta and /serenata off at once: either wins, but no music plays with the band hidden', async ($, on) => {
+  const clock = mock.clock(on, { now: 1000 })
+  mock.store(on)
+  const plays = player(on)
+  await Promise.all([$.command.run(typed('canta')), $.command.run(typed('serenata', 'off'))])
+  await clock.advance(2500)
+  const isShown = (await $.command.run(typed('serenata'))).text?.includes('accesa')
+  const sounding = plays.filter(p => !p.signal.aborted)
+  if (isShown) expect(sounding).toHaveLength(1)
+  else expect(sounding).toHaveLength(0)
+  // And Stop is always reachable when something sounds: hiding the band stops it.
+  await $.command.run(typed('serenata', 'off'))
+  expect(plays.filter(p => !p.signal.aborted)).toHaveLength(0)
+})
+
+test('a session restores the sound of each song, the last song of each collection and a hidden band', async ($, on) => {
+  mock.clock(on)
+  storeIn(on, { songId: 'serenata', sounds: { odissea: 'dita', serenata: 7 }, lastSongs: { odissea: 'dipende-da-me' }, showSettings: true })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.select({ key: 'collection', value: 'odissea' })
+  expect((await ui.find({ key: 'song' }))?.props.value).toBe('dipende-da-me')
+  await ui.select({ key: 'song', value: 'odissea' })
+  expect((await ui.find({ key: 'sound' }))?.props.value).toBe('dita')
+  await ui.unmount()
+})
+
+test('a band hidden in an earlier session stays hidden', async ($, on) => {
+  mock.clock(on)
+  storeIn(on, { isShown: false })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  // Nothing draws beneath the mod in a test: this hook stands for the engine.
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+
+    return <Text>engine</Text>
+  })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ key: 'sing' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('each album plays in its own ambience: the band in its club, HANA in a data center, Odissea in a temple, MDO on an evening of its own', () => {
+  const stageOf = (id: string) => band(1, SONGS.find(song => song.id === id)!)
+  const expected = { band: 'club', hana: 'datacenter', odissea: 'antico', mdo: 'serata' } as const
+  for (const song of SONGS) expect(ambienceOf(song)).toBe(expected[song.collection])
+  // The data center: its wall, teal beams, headsets; the band's own instruments.
+  const hana = stageOf('hana-di-notte')
+  expect(hana).toContain('url(#datacenterWall)')
+  expect(hana).toContain('url(#datacenterBeamTeal)')
+  expect(hana).not.toContain('url(#beamPurple)')
+  expect(hana).not.toContain('anticoWall')
+  expect(hana.length).toBeLessThan(131072)
+  // Its riser is grey-blue steel; the club keeps its purple one.
+  expect(hana).toContain('fill="#252e3e"')
+  expect(stageOf('serenata')).toContain('fill="#2e1f45"')
+  // MDO's evening: wine walls, rose beams, flower crowns, a riser in the walls' wine.
+  // In principio builds up its own way: bass at bar 6, a heartbeat from bar 8;
+  // every other song keeps the fixed form, and the stage follows each.
+  const principio = SONGS.find(s => s.id === 'in-principio')!
+  expect([principio.bassAt, principio.drumsAt]).toEqual([+(6 * principio.bar).toFixed(3), +(8 * principio.bar).toFixed(3)])
+  for (const song of SONGS.filter(s => s.id !== 'in-principio')) expect([song.bassAt, song.drumsAt]).toEqual([undefined, undefined])
+  const mdo = stageOf('in-principio')
+  expect(mdo).toContain(`begin="${(principio.drumsAt ?? 0).toFixed(2)}s"`)
+  expect(mdo).toContain('url(#serataWall)')
+  expect(mdo).toContain('url(#serataBeamRose)')
+  expect(mdo).toContain('fill="#3a1426"')
+  expect(mdo).not.toContain('url(#beamPurple)')
+  expect(mdo.length).toBeLessThan(131072)
+  // The club is drawn as it always was: its beams, its string of lights, its keyboard.
+  for (const id of ['serenata', 'canzone-2', 'canzone-3']) {
+    expect(stageOf(id)).toContain('url(#beamPurple)')
+    expect(stageOf(id)).not.toContain('anticoWall')
+  }
+  // The temple: its wall and frieze, golden beams, laurel on the Claudes.
+  for (const id of ['odissea', 'dipende-da-me', 'so-di-non-sapere', 'un-altro-me-stesso']) {
+    const stage = stageOf(id)
+    expect(stage).toContain('url(#anticoWall)')
+    expect(stage).toContain('url(#anticoKey)')
+    expect(stage).toContain('url(#anticoBeamGold)')
+    expect(stage).not.toContain('url(#beamPurple)')
+    expect(stage).toContain('#6f9a3f')
+    expect(stage.length).toBeLessThan(131072)
+  }
 })
