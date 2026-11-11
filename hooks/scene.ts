@@ -284,6 +284,7 @@ function taps() {
 function bassist() {
   const { AMBIENCE, BASS_AT, BAND_END, PULSE: beat } = tuned()
   if (AMBIENCE.instruments === 'antica') return kitharist()
+  if (AMBIENCE.instruments === 'romana') return cornicen()
   const bass =
     `<polygon points="0.2,4.2 2.8,3.6 4.6,4.6 4.2,6.4 1.8,7 0,6" fill="#7c4dbd"/>` +
     `<polygon points="0.8,4.6 2.6,4.1 3.9,4.9 3.6,5.9 1.9,6.3 0.7,5.6" fill="#9b6fd6"/>` +
@@ -311,7 +312,7 @@ function bassist() {
 
 function drummer() {
   const { SONG, AMBIENCE, DRUMS_AT, CRASHES, PULSE: beat } = tuned()
-  if (AMBIENCE.instruments === 'antica') return tympanist()
+  if (AMBIENCE.instruments === 'antica' || AMBIENCE.instruments === 'romana') return tympanist()
   const { outroAt } = SONG
   const stickArm = (x: number, stick: string, values: string) =>
     `<g>${shift(values, beat, DRUMS_AT, outroAt)}${box(x, 2, 2, 2, ORANGE)}<line ${stick} stroke="#efd9a7" stroke-width="0.35"/></g>`
@@ -336,6 +337,7 @@ function drummer() {
 function keyboardist() {
   const { AMBIENCE, BAND_END, PULSE: beat } = tuned()
   if (AMBIENCE.instruments === 'antica') return auletes()
+  if (AMBIENCE.instruments === 'romana') return organist()
   const x = KEYS_X
   // Fourteen white keys; a black one after each but the third and seventh of an octave.
   let keys = ''
@@ -354,7 +356,7 @@ function keyboardist() {
 
 function amp() {
   const { SONG, AMBIENCE, DRUMS_AT, PULSE: beat } = tuned()
-  if (AMBIENCE.instruments === 'antica') return amphora()
+  if (AMBIENCE.instruments === 'antica' || AMBIENCE.instruments === 'romana') return amphora()
   const { outroAt } = SONG
   return (
     `<rect x="${AMP_X}" y="176" width="46" height="38" rx="3" fill="#1e1a26" stroke="#3a3348"/>` +
@@ -383,15 +385,17 @@ function kitharist() {
   return member({ cx: BASS_X, feet: 168, u: 7, blink: 1.3, arms: '', front: kithara + hands, hop: { dur: beat, begin: BASS_AT, end: BAND_END } })
 }
 
-// The tympanon, the frame drum, beaten by hand on a stone platform, with two
-// small jingling drums where the cymbals were.
+// The tympanon, the frame drum, beaten by hand on a stone platform (in the
+// ambience's colours, when it gives them), with two small jingling drums
+// where the cymbals were.
 function tympanist() {
-  const { SONG, DRUMS_AT, CRASHES, PULSE: beat } = tuned()
+  const { SONG, AMBIENCE, DRUMS_AT, CRASHES, PULSE: beat } = tuned()
   const { outroAt } = SONG
   const handArm = (x: number, values: string) => `<g>${shift(values, beat, DRUMS_AT, outroAt)}${box(x, 2, 2, 2, ORANGE)}</g>`
   const arms = handArm(-2, '0 -0.8;0 0.6') + handArm(8, '0 0.6;0 -0.8')
   const x = DRUMS_X
-  const platform = `<rect x="${x - 72}" y="128" width="144" height="22" fill="#3a3040"/><rect x="${x - 72}" y="128" width="144" height="2" fill="#6b5a70"/>`
+  const { fill, edge } = AMBIENCE.riser ?? { fill: '#3a3040', edge: '#6b5a70' }
+  const platform = `<rect x="${x - 72}" y="128" width="144" height="22" fill="${fill}"/><rect x="${x - 72}" y="128" width="144" height="2" fill="${edge}"/>`
   const jingles = (cx: number, cy: number, r: number) =>
     `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="128" stroke="#6b5a70" stroke-width="1.5"/>` +
     `<g transform="translate(${cx} ${cy})"><g><animateTransform attributeName="transform" type="rotate" values="0;-14;8;0" dur="0.7s" begin="${CRASHES.map(sec).join(';')}"/>` +
@@ -431,6 +435,51 @@ function amphora() {
     `<path d="M ${x - 13} 196 h 3 v -4 h 3 v 4 h 3 v -4 h 3 v 4 h 3 v -4 h 3 v 4 h 3 v -4 h 3" stroke="#d98a5a" stroke-width="0.8" fill="none"/>` +
     `<rect x="${x - 7}" y="170" width="14" height="3" fill="#8a4a2a"/>`
   )
+}
+
+// ---------- the Roman band ----------
+
+// The cornu, the great round horn: a hoop of bronze around the player, over
+// its head and down to its feet, the bell opening forward above the shoulder.
+// It sounds in the intro, in the drops and in the outro (see tools/synth.mjs),
+// and its bell swells then, on the beat.
+function cornicen() {
+  const { SONG, BASS_AT, BAND_END, PULSE: beat } = tuned()
+  const spans: [number, number][] = [[0, sectionsOf(SONG)[0]?.end ?? 0]]
+  for (const [start, end] of [...dropLights(SONG).spans, [SONG.outroAt, BAND_END] as [number, number]]) {
+    const last = spans.at(-1)
+    if (last && start <= last[1] + 0.01) last[1] = Math.max(last[1], end)
+    else spans.push([start, end])
+  }
+  const blow =
+    `<animateTransform attributeName="transform" type="scale" values="1.3;1" dur="${sec(beat)}" ` +
+    `begin="${spans.map(([start]) => sec(start)).join(';')}" end="${spans.map(([, end]) => sec(end)).join(';')}" calcMode="discrete" repeatCount="indefinite"/>`
+  const horn =
+    `<circle cx="3.6" cy="2.6" r="5.4" fill="none" stroke="${BRONZE}" stroke-width="0.8"/>` +
+    `<g transform="translate(7.1 -1.5)"><g>${blow}<polygon points="-0.3,-0.5 2.6,-2.1 3.4,0.9 0.3,0.5" fill="${BRONZE}"/><polygon points="2.6,-2.1 3.4,0.9 3,1 2.2,-2" fill="#8a6a2a"/></g></g>`
+  const hands = box(-1.6, 3.4, 1.8, 1.6, ORANGE) + box(7.8, 3.4, 1.8, 1.6, ORANGE)
+  return member({ cx: BASS_X, feet: 168, u: 7, blink: 1.3, arms: '', front: horn + hands, hop: { dur: beat, begin: BASS_AT, end: BAND_END } })
+}
+
+// The hydraulis, the water organ: a row of bronze pipes on a wooden chest,
+// over the bronze cistern whose water keeps its wind steady, a pump at each
+// side; the player behind it, a hand on the keys at each end.
+function organist() {
+  const { BAND_END, PULSE: beat } = tuned()
+  const x = KEYS_X
+  let pipes = ''
+  for (let i = 0; i < 11; i++) {
+    const h = 18 - i
+    pipes += box(x - 21.5 + i * 4, 146 - h, 3, h, i % 2 ? '#b38d3c' : BRONZE) + box(x - 20.9 + i * 4, 142, 1.8, 1, '#3a2a12')
+  }
+  const hand = (hx: number, values: string) => `<g>${shift(values, beat / 2, 0.2, BAND_END)}${box(hx, 138, 8, 6, ORANGE)}</g>`
+  const organ =
+    box(x - 34, 150, 5, 18, BRONZE) + box(x + 29, 150, 5, 18, BRONZE) +
+    box(x - 22, 152, 44, 16, DARK_WOOD) +
+    `<ellipse cx="${x}" cy="160" rx="12" ry="6" fill="${BRONZE}"/><ellipse cx="${x}" cy="159" rx="8" ry="3.5" fill="#8a6a2a"/>` +
+    box(x - 30, 146, 60, 6, WOOD) + box(x - 30, 146, 60, 1.2, DARK_WOOD) +
+    pipes + hand(x - 34, '0 0;0 2') + hand(x + 26, '0 2;0 0')
+  return member({ cx: x, feet: 168, u: 7, blink: 3.2, arms: '' }) + organ
 }
 
 // The quiet band's small picture: Claude blinking beside a beating pixel heart.

@@ -7,13 +7,16 @@
 // with its lyre plucked with a plectrum, bright as it was first made, or with
 // the fingertips, soft and warm; or `rave`, hardcore techno (the kick on every
 // beat, an acid line, stabs and the hoover), played dark or happy (happy
-// hardcore: a bouncing bass, a bright piano, a supersaw).
+// hardcore: a bouncing bass, a bright piano, a supersaw); or `romana`, what
+// played in Rome (the hydraulis, a water organ; the cithara; the cornu, a
+// round horn of natural notes; the tibia; tympanum, scabellum and cymbala).
 export const PROFILES = {
   pop: { orchestra: 'pop' },
   plettro: { orchestra: 'antica', lyre: 'plettro' },
   dita: { orchestra: 'antica', lyre: 'dita' },
   rave: { orchestra: 'rave' },
   happy: { orchestra: 'rave', mood: 'happy' },
+  romana: { orchestra: 'romana' },
 }
 
 // `classico`, the first voice, which sings the letters it knows and skips

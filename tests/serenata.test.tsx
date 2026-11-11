@@ -4,6 +4,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import { band } from '../hooks/scene'
 import { SCENERIES } from '../hooks/sets'
 import { flight } from '../hooks/sets/codice'
+import { shadow } from '../hooks/sets/meridiana'
 import { PROFILES, STYLES } from '../tools/profiles.mjs'
 import type { Song } from '../hooks/song'
 import { ambienceOf, assetOf, hasSettings, partsOf, sectionsOf, songOf, SONGS, songsIn, SOUND_PROFILES, soundOf, soundsOf, VOICE_STYLES, voiceOf, voicesOf } from '../hooks/song'
@@ -54,7 +55,7 @@ test('Canta in the band plays the song and draws the stage', async ($, on) => {
   await clock.advance(1000)
   expect(played).toEqual([])
   await clock.advance(300)
-  // A new install starts on the newest song, Fable 5.2.
+  // A new install starts on the song for Fable 5.2.
   expect(played).toEqual(['audio/fable.m4a'])
 
   const stage = String(await stageOf())
@@ -141,7 +142,7 @@ test('the menus list the collections and the songs of the picked one, beside Can
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   const collection = await ui.find({ key: 'collection' })
   expect(collection?.type).toBe('Select')
-  expect((collection?.props.options as { value: string }[]).map(o => o.value)).toEqual(['band', 'hana', 'odissea', 'mdo', 'carica'])
+  expect((collection?.props.options as { value: string }[]).map(o => o.value)).toEqual(['band', 'hana', 'odissea', 'mdo', 'carica', 'roma'])
   expect(collection?.props.value).toBe('carica')
   const quiet = await ui.find({ key: 'song' })
   expect(quiet?.type).toBe('Select')
@@ -242,7 +243,7 @@ test('/canta picks a song by number or by name, and lists them for anything else
   await ui.unmount()
 })
 
-test('a session starts with the song picked last time, or the newest if it is gone', async ($, on) => {
+test('a session starts with the song picked last time, or Fable 5.2 if it is gone', async ($, on) => {
   mock.clock(on)
   const memory = storeIn(on, { songId: 'canzone-3' })
   on('session.start', (_, e) => ({ cwd: e.cwd }))
@@ -681,9 +682,9 @@ test('a band hidden in an earlier session stays hidden', async ($, on) => {
   await ui.unmount()
 })
 
-test('each album plays in its own ambience: the band in its club, HANA in a data center, Odissea in a temple, MDO on an evening of its own, Carica at a rave', () => {
+test('each album plays in its own ambience: the band in its club, HANA in a data center, Odissea in a temple, MDO on an evening of its own, Carica at a rave, Roma in a house in Pompeii', () => {
   const stageOf = (id: string) => band(1, SONGS.find(song => song.id === id)!)
-  const expected = { band: 'club', hana: 'datacenter', odissea: 'antico', mdo: 'serata', carica: 'rave' } as const
+  const expected = { band: 'club', hana: 'datacenter', odissea: 'antico', mdo: 'serata', carica: 'rave', roma: 'roma' } as const
   for (const song of SONGS) expect(ambienceOf(song)).toBe(expected[song.collection])
   // The data center: its wall, teal beams, headsets; the band's own instruments.
   const hana = stageOf('hana-di-notte')
@@ -792,8 +793,8 @@ test('Centottanta has a form of its own: two verses, a roll and a breakdown, thr
   const last = drops[2]!
   expect(stage).toContain(`values="0 0;-1.6 0.6;1.6 -0.6;0 0" dur="${(song.pulse ?? 0).toFixed(2)}s" begin="${last.start.toFixed(2)}s"`)
   expect(stage).toContain(`values="1.24;1;1" keyTimes="0;0.4;1" dur="${(song.pulse ?? 0).toFixed(2)}s" begin="${last.start.toFixed(2)}s" end="${last.end.toFixed(2)}s"`)
-  // Every song but Carica's keeps the first form, as it always had.
-  for (const other of SONGS) expect(other.sections === undefined).toBe(other.collection !== 'carica')
+  // Every song but Carica's and Roma's keeps the first form, as it always had.
+  for (const other of SONGS) expect(other.sections === undefined).toBe(other.collection !== 'carica' && other.collection !== 'roma')
 })
 
 test('Carica has four songs: Centottanta, Cutover at 190, Venerdì played happy, and Fable 5.2', () => {
@@ -848,4 +849,63 @@ test('Fable 5.2 is what a new install starts on, at 200, the band dancing in its
   expect(stage.match(/values="0 0;-0.5 -1.5;0 0;0.5 -1.5"/g)?.length).toBe(4)
   expect(stage.match(new RegExp(`values="-8 4 8;8 4 8" dur="[0-9.]+s" begin="${last.start.toFixed(2)}s"`, 'g'))?.length).toBe(4)
   for (const other of SONGS.filter(s => s.id !== 'fable')) expect(band(1, other)).not.toContain('-0.5 -1.5')
+})
+
+test('Roma has a song, Carpe diem: Horace in a house in Pompeii, played by the Roman orchestra', () => {
+  const song = SONGS.find(s => s.id === 'carpe-diem')!
+  expect(songsIn('roma').map(s => s.id)).toEqual(['carpe-diem'])
+  // After every other song, so each keeps its number in /canta; Fable 5.2 is still what a new install starts on.
+  expect(SONGS.at(-1)?.id).toBe('carpe-diem')
+  expect(SONGS.findIndex(s => s.id === 'fable')).toBe(SONGS.length - 2)
+  expect(song.source).toContain('Orazio')
+  // One sound and the advanced voice, which sings its b, g, v and z: nothing to set.
+  expect(soundsOf(song)).toEqual(['romana'])
+  expect(voicesOf(song, 'romana')).toEqual(['avanzato'])
+  expect(hasSettings(song, 'romana')).toBe(false)
+  // A form of its own: the refrain twice, a break before the second, which is the longer.
+  expect(sectionsOf(song).map(s => s.part)).toEqual(['intro', 'verse', 'drop', 'verse', 'break', 'drop', 'outro'])
+  expect(song.lines).toHaveLength(12)
+  const [first, last] = partsOf(song, 'drop')
+  expect(last!.end - last!.start).toBeGreaterThan(first!.end - first!.start)
+  // The refrain keeps Horace's Latin, and the song ends on it alone.
+  const words = song.lines.map(line => line.syls.map(s => s.text).join(''))
+  expect(words.filter(w => w.startsWith('Carpe diem!'))).toHaveLength(3)
+  expect(words.at(-1)).toBe('Carpe diem! Carpe diem!')
+  // The house in Pompeii: red walls, gold and red beams, a centurion's crest
+  // on the Claudes, the drummer's platform in the red of the walls; and on
+  // the wall what every room of the band has.
+  const stage = band(1, song)
+  expect(stage).toContain('url(#romaWall)')
+  expect(stage).toContain('url(#romaBeamGold)')
+  expect(stage).toContain('url(#romaBeamRed)')
+  expect(stage).not.toContain('url(#beamPurple)')
+  expect(stage).not.toContain('anticoWall')
+  expect(stage.match(/fill="#c8372d"/g)?.length).toBeGreaterThanOrEqual(4)
+  expect(stage).toContain('fill="#4a1c18"')
+  expect(stage).toContain('>M2V-MDO<')
+  // The cornu's hoop, its bell swelling in the intro, in each drop and in the
+  // outro (the last drop and the outro as one); the pipes of the hydraulis.
+  expect(stage).toContain('<circle cx="3.6" cy="2.6" r="5.4"')
+  const bandEnd = sectionsOf(song).at(-1)!.end - song.bar
+  expect(stage).toContain(`begin="0.00s;${first!.start.toFixed(2)}s;${last!.start.toFixed(2)}s" end="${sectionsOf(song)[0]!.end.toFixed(2)}s;${first!.end.toFixed(2)}s;${bandEnd.toFixed(2)}s"`)
+  expect(stage.match(/fill="#b38d3c"/g)?.length).toBe(5)
+  // No other album has them.
+  for (const other of SONGS.filter(s => s.collection !== 'roma')) expect(band(1, other)).not.toContain('romaWall')
+  // Its scenery: the winter sea, the sundial and what is carved on it, the signs.
+  expect(stage).toContain('CARPE DIEM')
+  expect(stage).toContain('OGGI ♥')
+  expect(stage).toContain('>DUM LOQUIMUR<')
+  expect(stage).toContain('url(#meridianaSea)')
+  // The sundial's shadow: still until the first word, then steady from the
+  // first hour to the last at the outro, but through the break, where it
+  // jumps ahead: time has fled while they were talking.
+  const points = shadow(song)
+  const gap = partsOf(song, 'break')[0]!
+  expect(points.map(([t]) => t)).toEqual([0, song.lines[0]!.start, gap.start, gap.end, song.outroAt])
+  const [, [t1, a1], [t2, a2], [t3, a3], [t4, a4]] = points as [[number, number], [number, number], [number, number], [number, number], [number, number]]
+  expect([points[0]![1], a1, a4]).toEqual([160, 160, 20])
+  const before = (a1 - a2) / (t2 - t1)
+  expect(near(before, (a3 - a4) / (t4 - t3))).toBe(true)
+  expect((a2 - a3) / (t3 - t2)).toBeGreaterThan(3 * before)
+  expect(stage.length).toBeLessThan(131072)
 })

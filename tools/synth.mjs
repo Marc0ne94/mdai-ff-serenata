@@ -95,6 +95,19 @@ for (const tune of [SONG.reed?.intro ?? [], SONG.reed?.outro ?? []]) {
   for (const note of tune) if (!Array.isArray(note) || !isNumber(note[0]) || !isNumber(note[1]) || note[1] <= 0) throw new Error(`a reed note is [midi, beats]: ${JSON.stringify(note)}`)
 }
 if (!(SONG.drone ?? []).every(isNumber)) throw new Error(`the drone is a list of midi numbers: ${JSON.stringify(SONG.drone)}`)
+// The cornu of the Roman orchestra has no holes and no valves: it plays what
+// its tube gives, harmonics 2 to 12 of its lowest note (`cornu.tube`, G1 when
+// a song names none) but the eleventh, which falls between two notes. Each is
+// played at the pitch of the note nearest it, as a player's lips bring it there.
+const TUBE = SONG.cornu?.tube ?? 31
+if (!isNumber(TUBE)) throw new Error(`the cornu's tube is a midi number: ${JSON.stringify(TUBE)}`)
+const NATURAL = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12].map(h => Math.round(TUBE + 12 * Math.log2(h)))
+for (const tune of [SONG.cornu?.intro ?? [], SONG.cornu?.outro ?? []]) {
+  for (const note of tune) {
+    if (!Array.isArray(note) || !isNumber(note[0]) || !isNumber(note[1]) || note[1] <= 0) throw new Error(`a cornu note is [midi, beats]: ${JSON.stringify(note)}`)
+    if (!NATURAL.includes(note[0])) throw new Error(`the cornu has no note ${note[0]}: its tube gives ${NATURAL.join(', ')}`)
+  }
+}
 // The pair asked for is one the song declares.
 if (!(VOICE in (SONG.audio[PROFILE] ?? {}))) throw new Error(`the song is not sung in ${VOICE} in the profile ${PROFILE}`)
 for (const bar of BARS) {
@@ -534,6 +547,7 @@ function addStereo(n, s, pan, wet) {
 const ORCHESTRA_BANDS = {
   pop: popBand,
   antica: anticaBand,
+  romana: romanaBand,
   rave: raveBand,
 }
 
@@ -1000,6 +1014,302 @@ function anticaBand() {
   for (const syl of syllables) {
     syl.notes.forEach(note => reed(note.start, note.midi, Math.min(note.dur, syl.soundEnd - note.start), 0.035, -0.1))
   }
+}
+
+// ---------- the Roman orchestra ----------
+// What played in Rome, at a banquet as at the games. The hydraulis, the water
+// organ, holds the chords from the first bar: flue pipes, each a tone of few
+// harmonics that speaks with a breath of noise and its octave, then does not
+// waver (water kept its wind at one pressure), no two pipes quite in tune.
+// The cithara, a string plucked a fifth of the way along over a wooden box,
+// is strummed on the beat. The cornu, the great round horn, plays only the
+// harmonics of its tube (see NATURAL): its own tune before the voice and
+// after it (`cornu`: intro and outro, [midi, beats]), and under each chord of
+// a drop, blown softly, the natural note of that chord nearest its last,
+// coming in a beat early; it is a saw through a filter that opens as the note
+// swells, as brass brightens the harder it is blown. The tibia, two reed pipes a hair apart,
+// doubles the voice softly. And the tympanum (a skin on a frame: the partials
+// of a membrane, which are not a string's), the scabellum (the wooden clapper
+// under the piper's foot, which kept time) and the cymbala (small bronze cups).
+// Its arrangement on the form: the organ from the first bar, an octave rank
+// added in the drops; the cithara and its low string from the bass bar; the
+// percussion from the drums bar, out in the breaks, a roll of the tympanum
+// into the drop after one; the cornu in the intro, the drops and the outro.
+function romanaBand() {
+  const chordOf = name => {
+    const [r, iv] = CHORD[name]
+    return { r, iv, third: iv[1], fifth: iv[2] }
+  }
+  const isBreak = bar => partOf(bar) === 'break'
+  // How loud each plays: the organ's pipes (alone, under a verse, in a drop),
+  // a string of the cithara, the cornu's own tune, a pipe of the tibia, the
+  // tympanum; set so that the band sits under the voice as the ancient one
+  // does (see bandByLine).
+  const ORGAN = { alone: 0.025, verse: 0.027, drop: 0.037 }
+  const CITHARA = 0.2
+  const CORNU = 0.18
+  const TIBIA = 0.011
+  const DRUMS = 0.38
+  // The chord's first three tones within an octave from `lo`, low to high.
+  const voiced = (r, iv, lo) =>
+    iv
+      .slice(0, 3)
+      .map(x => {
+        let m = r + x
+        while (m < lo) m += 12
+        while (m >= lo + 12) m -= 12
+        return m
+      })
+      .sort((a, b) => a - b)
+
+  // One pipe of the hydraulis, a few cents off its note as every pipe is.
+  const RANKS = [1, 0.3, 0.16, 0.05, 0.03]
+  function pipe(t0, t1, midi, gain, pan) {
+    const f = mtof(midi) * Math.pow(2, ((rand() - 0.5) * 8) / 1200)
+    const start = Math.round(t0 * SR)
+    const end = Math.min(N, Math.round((t1 + 0.4) * SR))
+    const w = (2 * Math.PI * f) / SR
+    const air = 1 - Math.exp((-2 * Math.PI * 3 * f) / SR)
+    let breath = 0
+    for (let n = start; n < end; n++) {
+      const t = (n - start) / SR
+      // As it speaks: its octave first, in a puff of air.
+      const chiff = Math.exp(-t / 0.035)
+      let env = smoothstep(clamp(t / 0.06))
+      if (n / SR > t1) env *= Math.exp(-(n / SR - t1) / 0.09)
+      let s = 0
+      for (let h = 0; h < RANKS.length; h++) s += RANKS[h] * (h === 1 ? 1 + 2 * chiff : 1) * Math.sin(w * (h + 1) * (n - start))
+      breath += air * (rand() * 2 - 1 - breath)
+      addStereo(n, (s + breath * (0.06 + 0.6 * chiff)) * env * gain, pan, 0.5)
+    }
+  }
+  SEGMENTS.forEach(({ name, beats, t0, bar }) => {
+    const { r, iv } = chordOf(name)
+    // The last chord is held into the tail.
+    const t1 = t0 + beats * BEAT + (bar === TOTAL_BARS - 1 ? 1.5 : 0)
+    const full = isDrop(bar)
+    const gain = full ? ORGAN.drop : bar < INTRO_BARS || isBreak(bar) || bar >= OUTRO_BAR ? ORGAN.alone : ORGAN.verse
+    pipe(t0, t1, r + 12, gain * 1.2, 0)
+    voiced(r, iv, 57).forEach((m, i) => {
+      pipe(t0, t1, m, gain, (i - 1) * 0.5)
+      if (full) pipe(t0, t1, m + 12, gain * 0.45, (1 - i) * 0.5)
+    })
+  })
+
+  // One string of the cithara: a burst of noise softened by the plectrum,
+  // less itself a fifth of a period later (plucked a fifth of the way along,
+  // a string has no fifth harmonic), circling a delay as long as its period,
+  // softened each time round; then the wooden box, two resonances.
+  function string(t0, midi, gain, pan = 0, ring = 2) {
+    const f = mtof(midi)
+    const period = SR / f
+    const len = Math.round(ring * SR)
+    const y = new Float32Array(len)
+    const burst = Math.ceil(period)
+    const pick = Math.max(1, Math.round(period / 5))
+    const pluck = new Float32Array(burst)
+    let soft = 0
+    for (let n = 0; n < burst; n++) {
+      soft = soft * 0.35 + (rand() * 2 - 1) * 0.65
+      pluck[n] = soft
+    }
+    let mean = 0
+    for (let n = 0; n < burst && n < len; n++) {
+      y[n] = pluck[n] - (n >= pick ? pluck[n - pick] : 0)
+      mean += y[n]
+    }
+    mean /= burst
+    for (let n = 0; n < burst && n < len; n++) y[n] -= mean
+    const decay = Math.pow(0.001, 1 / (f * ring))
+    const D = period - 0.5
+    for (let n = burst; n < len; n++) {
+      const x = n - D
+      const i = Math.floor(x)
+      const fr = x - i
+      const a = (y[i] ?? 0) * (1 - fr) + (y[i + 1] ?? 0) * fr
+      const b = (y[i - 1] ?? 0) * (1 - fr) + (y[i] ?? 0) * fr
+      y[n] = decay * 0.5 * (a + b)
+    }
+    const box = [190, 430].map(fb => {
+      const r = Math.exp((-Math.PI * 70) / SR)
+      return { b1: 2 * r * Math.cos((2 * Math.PI * fb) / SR), b2: -r * r, g: 1 - r, y1: 0, y2: 0 }
+    })
+    const start = Math.round(t0 * SR)
+    for (let n = 0; n < len; n++) {
+      let wood = 0
+      for (const b of box) {
+        const out = b.g * y[n] + b.b1 * b.y1 + b.b2 * b.y2
+        b.y2 = b.y1
+        b.y1 = out
+        wood += out
+      }
+      addStereo(start + n, (y[n] * 0.75 + wood * 0.9) * gain * clamp((len - n) / (0.05 * SR)), pan, 0.35)
+    }
+  }
+  // A strum: the strings one after the other, the first the loudest.
+  const strum = (t, notes, gain, gap, ring) =>
+    notes.forEach((m, i) => string(t + i * gap, m, gain * (i === 0 ? 1 : 0.8), clamp((m - 62) / 20, -0.5, 0.5), ring))
+  // From the bass bar: a strum on the first beat of each chord over its low
+  // string, single strings on the beats after; in the drops a strum on every
+  // beat and two strings back up between them; in a break and in the outro
+  // one slow strum a chord; the last chord rolled and left to ring.
+  SEGMENTS.forEach(({ name, beats, t0, bar }) => {
+    if (bar < BASS_BAR) return
+    const { r, third, fifth } = chordOf(name)
+    const lo = r + 12
+    const chord = [lo, lo + fifth, lo + 12, lo + 12 + third]
+    if (bar === TOTAL_BARS - 1) {
+      strum(t0, [r, ...chord, lo + 12 + fifth, lo + 24], CITHARA * 1.2, 0.07, BAR + TAIL - 0.5)
+      return
+    }
+    if (isBreak(bar) || bar >= OUTRO_BAR) {
+      strum(t0, chord, CITHARA, 0.09, 3)
+      return
+    }
+    string(t0, r, CITHARA, 0, 2.2)
+    for (let b = 0; b < beats; b++) {
+      const t = t0 + b * BEAT
+      if (isDrop(bar)) {
+        strum(t, chord, CITHARA * (b % 2 ? 0.75 : 1), 0.022, 1.8)
+        strum(t + BEAT / 2, [chord[3], chord[2]], CITHARA * 0.5, 0.015, 1.2)
+      } else if (b === 0) strum(t, chord, CITHARA, 0.022, 1.8)
+      else string(t, chord[b % 3 + 1], CITHARA * 0.75, clamp((chord[b % 3 + 1] - 62) / 20, -0.5, 0.5), 1.8)
+    }
+  })
+
+  // The cornu: every harmonic of a saw through a low-pass that opens with the
+  // swell of the note, the wider the harder it is blown (`blow`, 0 to 1);
+  // the lips find the note from a hair below it.
+  function cornu(t0, midi, dur, gain, blow = 1) {
+    const f0 = mtof(midi)
+    const start = Math.round(t0 * SR)
+    const len = Math.round((dur + 0.25) * SR)
+    const H = Math.min(40, Math.floor(9000 / f0))
+    const phases = new Float64Array(H + 1)
+    let low = 0
+    let band = 0
+    for (let n = 0; n < len; n++) {
+      const t = n / SR
+      let env = smoothstep(clamp(t / 0.08)) * (0.7 + 0.3 * smoothstep(clamp(t / Math.max(0.2, dur * 0.6))))
+      if (t > dur) env *= Math.exp(-(t - dur) / 0.06)
+      const f = f0 * Math.pow(2, (-30 * Math.exp(-t / 0.035)) / 1200)
+      let saw = 0
+      for (let h = 1; h <= H; h++) {
+        phases[h] += (2 * Math.PI * h * f) / SR
+        saw += Math.sin(phases[h]) / h
+      }
+      const k = 2 * Math.sin((Math.PI * Math.min(6000, f0 * (1.5 + 5 * blow * env * env))) / SR)
+      low += k * band
+      band += k * (saw - low - 0.9 * band)
+      addStereo(start + n, (low + (rand() * 2 - 1) * 0.015) * env * gain, -0.25, 0.55)
+    }
+  }
+  const tune = (notes, bar) => {
+    let t = bar * BAR
+    for (const [midi, beats] of notes) {
+      cornu(t, midi, beats * BEAT * 0.9, CORNU)
+      t += beats * BEAT
+    }
+  }
+  tune(SONG.cornu?.intro ?? [], 0)
+  tune(SONG.cornu?.outro ?? [], OUTRO_BAR)
+  // The natural note of a chord nearest another, in the middle of the horn.
+  const naturalIn = (name, near) => {
+    const { r, iv } = chordOf(name)
+    const tones = iv.slice(0, 3).map(x => (r + x) % 12)
+    return NATURAL.filter(m => m >= TUBE + 24 && m <= TUBE + 40 && tones.includes(m % 12)).sort((a, b) => Math.abs(a - near) - Math.abs(b - near))[0]
+  }
+  let last = TUBE + 31
+  for (const drop of DROPS) {
+    const lead = SEGMENTS.findLast(s => s.t0 < drop.from * BAR - 1e-9)
+    const pickup = lead ? naturalIn(lead.name, last) : undefined
+    if (pickup !== undefined) {
+      cornu(drop.from * BAR - BEAT, pickup, BEAT * 0.9, CORNU * 0.7, 0.7)
+      last = pickup
+    }
+    for (const seg of SEGMENTS.filter(s => s.bar >= drop.from && s.bar < drop.to)) {
+      const midi = naturalIn(seg.name, last)
+      if (midi === undefined) continue
+      cornu(seg.t0, midi, seg.beats * BEAT * 0.94, CORNU * 0.55, 0.4)
+      last = midi
+    }
+  }
+
+  // The tibia: two reed pipes a hair apart, left and right, on the voice's melody.
+  function tibia(t0, midi, dur, gain) {
+    for (const [cents, pan] of [[-7, -0.45], [7, 0.45]]) {
+      const f0 = mtof(midi) * Math.pow(2, cents / 1200)
+      const H = Math.min(14, Math.floor(6500 / f0))
+      const amps = []
+      for (let h = 1; h <= H; h++) amps.push(((h % 2 ? 1 : 0.3) / h) * (1 + 1.4 * Math.exp(-(((h * f0 - 1700) / 600) ** 2))))
+      const start = Math.round(t0 * SR)
+      const len = Math.round((dur + 0.12) * SR)
+      const w = (2 * Math.PI * f0) / SR
+      for (let n = 0; n < len; n++) {
+        const t = n / SR
+        let env = smoothstep(clamp(t / 0.05))
+        if (t > dur) env *= Math.exp(-(t - dur) / 0.05)
+        let s = 0
+        for (let h = 1; h <= H; h++) s += amps[h - 1] * Math.sin(w * h * n)
+        addStereo(start + n, s * env * gain, pan, 0.45)
+      }
+    }
+  }
+  for (const syl of syllables) {
+    syl.notes.forEach(note => tibia(note.start, note.midi, Math.min(note.dur, syl.soundEnd - note.start), TIBIA))
+  }
+
+  // The tympanum: the partials of a round skin, [ratio, level, decay], all
+  // sliding down as the skin settles, and the thud of the hand.
+  const SKIN = [[1, 1, 7], [1.59, 0.45, 12], [2.14, 0.25, 16], [2.3, 0.2, 18], [2.65, 0.12, 22]]
+  function tympanum(t0, gain) {
+    const start = Math.round(t0 * SR)
+    const ph = new Float64Array(SKIN.length)
+    for (let n = 0; n < 0.7 * SR; n++) {
+      const t = n / SR
+      const f = 84 * (1 + 0.3 * Math.exp(-t * 30))
+      let s = (rand() * 2 - 1) * 0.35 * Math.exp(-t * 180)
+      for (let i = 0; i < SKIN.length; i++) {
+        ph[i] += (2 * Math.PI * f * SKIN[i][0]) / SR
+        s += SKIN[i][1] * Math.sin(ph[i]) * Math.exp(-t * SKIN[i][2])
+      }
+      addStereo(start + n, s * gain * clamp(t / 0.002), 0, 0.15)
+    }
+  }
+  // What is struck and rings, as its partials, [Hz, level, decay], after a
+  // click: the wood of the scabellum, the bronze of the cymbala (two cups, a
+  // hair apart).
+  const WOOD = [[1050, 1, 70], [1900, 0.5, 90], [2750, 0.25, 120]]
+  const CUPS = [[2349, 1, 9], [2371, 0.8, 10], [3336, 0.7, 11], [4675, 0.5, 14], [6131, 0.35, 18], [7752, 0.2, 24]]
+  function struck(t0, partials, dur, gain, pan, wet) {
+    const start = Math.round(t0 * SR)
+    for (let n = 0; n < dur * SR; n++) {
+      const t = n / SR
+      let s = (rand() * 2 - 1) * 0.3 * Math.exp(-t * 600)
+      for (const [f, level, decay] of partials) s += level * Math.sin(2 * Math.PI * f * t) * Math.exp(-t * decay)
+      addStereo(start + n, s * gain * clamp(t / 0.001), pan, wet)
+    }
+  }
+  // The tympanum on the first and third beat, the scabellum on the second and
+  // fourth; in the drops the scabellum on every beat and the cymbala between.
+  for (let bar = DRUMS_BAR; bar < OUTRO_BAR; bar++) {
+    if (isBreak(bar)) continue
+    const t0 = bar * BAR
+    const full = isDrop(bar)
+    tympanum(t0, DRUMS * (full ? 1.2 : 1))
+    tympanum(t0 + 2 * BEAT, DRUMS * (full ? 0.95 : 0.75))
+    if (full) tympanum(t0 + 3.5 * BEAT, DRUMS * 0.5)
+    for (let b = 0; b < 4; b++) {
+      if (full || b % 2) struck(t0 + b * BEAT, WOOD, 0.09, DRUMS * (b % 2 ? 0.3 : 0.18), 0.2, 0.2)
+      if (full) struck(t0 + (b + 0.5) * BEAT, CUPS, 0.5, DRUMS * 0.035, -0.3, 0.3)
+    }
+  }
+  SECTIONS.forEach((section, i) => {
+    if (section.part !== 'break' || SECTIONS[i + 1]?.part !== 'drop' || section.to <= DRUMS_BAR) return
+    for (let k = 0; k < 8; k++) tympanum(section.to * BAR - ((8 - k) * BEAT) / 4, DRUMS * (0.2 + 0.1 * k))
+  })
+  // The cups clashed where each drop starts and on the last bar of the last.
+  for (const bar of CRASH_BARS) struck(bar * BAR, CUPS, 1.4, DRUMS * 0.14, -0.3, 0.5)
 }
 
 // ---------- the rave orchestra: hardcore techno ----------

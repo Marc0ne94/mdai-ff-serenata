@@ -1,3 +1,4 @@
+import { AUDIO as CARPE_DIEM_AUDIO, TIMING as CARPE_DIEM_TIMING } from './songs/carpe-diem'
 import { AUDIO as CENTOTTANTA_AUDIO, TIMING as CENTOTTANTA_TIMING } from './songs/centottanta'
 import { AUDIO as CUTOVER_AUDIO, TIMING as CUTOVER_TIMING } from './songs/cutover'
 import { AUDIO as DIPENDE_DA_ME_AUDIO, TIMING as DIPENDE_DA_ME_TIMING } from './songs/dipende-da-me'
@@ -63,7 +64,7 @@ export const partsOf = (song: Timing, part: Part) => sectionsOf(song).filter(s =
 // (its voice style). A song is rendered in the pairs its file in tools/songs
 // declares, and in no other: the menus offer exactly those, in this order.
 export type VoiceId = 'classico' | 'avanzato'
-export type SoundId = 'pop' | 'plettro' | 'dita' | 'rave' | 'happy'
+export type SoundId = 'pop' | 'plettro' | 'dita' | 'rave' | 'happy' | 'romana'
 export type Voices = Partial<Record<VoiceId, string>>
 export type Sounds = Partial<Record<SoundId, Voices>>
 export const VOICE_STYLES: readonly { id: VoiceId; label: string }[] = [
@@ -76,26 +77,29 @@ export const SOUND_PROFILES: readonly { id: SoundId; label: string }[] = [
   { id: 'dita', label: 'Dita' },
   { id: 'rave', label: 'Rave' },
   { id: 'happy', label: 'Happy' },
+  { id: 'romana', label: 'Romana' },
 ]
 
 // The collections (albums) the songs are gathered in, in the menu's order: the
 // band's own songs, played in its club; HANA, songs of the SAP world, played in
 // a data center; Odissea, songs of the ancient world and of its philosophers,
 // played in a temple; MDO, the Serenata's own love story, played on an
-// evening of its own; and Carica, songs that give a charge, played at a rave.
+// evening of its own; Carica, songs that give a charge, played at a rave; and
+// Roma, the Latin poets, played in the dining room of a house in Pompeii.
 // The ambiences are in hooks/ambiences.
-export type CollectionId = 'band' | 'hana' | 'odissea' | 'mdo' | 'carica'
-export type AmbienceId = 'club' | 'datacenter' | 'antico' | 'serata' | 'rave'
+export type CollectionId = 'band' | 'hana' | 'odissea' | 'mdo' | 'carica' | 'roma'
+export type AmbienceId = 'club' | 'datacenter' | 'antico' | 'serata' | 'rave' | 'roma'
 export const COLLECTIONS: readonly { id: CollectionId; label: string; ambience: AmbienceId }[] = [
   { id: 'band', label: 'La band', ambience: 'club' },
   { id: 'hana', label: 'HANA', ambience: 'datacenter' },
   { id: 'odissea', label: 'Odissea', ambience: 'antico' },
   { id: 'mdo', label: 'MDO', ambience: 'serata' },
   { id: 'carica', label: 'Carica', ambience: 'rave' },
+  { id: 'roma', label: 'Roma', ambience: 'roma' },
 ]
 
 // The sceneries of hooks/sets, by name.
-export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio' | 'batteria' | 'cutover' | 'venerdi' | 'favola'
+export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio' | 'batteria' | 'cutover' | 'venerdi' | 'favola' | 'meridiana'
 
 export type Song = Timing & {
   // Its address in the menus, in /canta and in the store: short, never reused.
@@ -172,10 +176,21 @@ export const SONGS: readonly Song[] = [
   { id: 'cutover', title: 'Cutover', collection: 'carica', scenery: 'cutover', audio: CUTOVER_AUDIO, ...CUTOVER_TIMING },
   { id: 'venerdi', title: 'Venerdì', collection: 'carica', scenery: 'venerdi', audio: VENERDI_AUDIO, ...VENERDI_TIMING },
   FABLE,
+  // The first song of Roma: Horace's ode, its refrain in his Latin, played by
+  // the Roman orchestra. After Fable 5.2, so every song keeps its number.
+  {
+    id: 'carpe-diem',
+    title: 'Carpe diem',
+    collection: 'roma',
+    scenery: 'meridiana',
+    audio: CARPE_DIEM_AUDIO,
+    source: 'Orazio, Odi I, 11 («Tu ne quaesieris»): il ritornello «carpe diem» è nel suo latino',
+    ...CARPE_DIEM_TIMING,
+  },
 ]
 
 // The song with this id; when none is picked yet (a new install) or no song
-// has it any more, the newest, for Fable 5.2.
+// has it any more, the one for Fable 5.2.
 export function songOf(id: string | null | undefined): Song {
   return SONGS.find(song => song.id === id) ?? FABLE
 }

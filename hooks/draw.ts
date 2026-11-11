@@ -129,8 +129,8 @@ export type Ambience = {
   sign?: { fill: string; stroke: string }
   // What each Claude wears on its head, in its own cells (8 wide, row 0 the top of its head).
   crown?: string
-  // The instruments the band plays: the club's, or the ancient ones.
-  instruments?: 'band' | 'antica'
+  // The instruments the band plays: the club's, the ancient ones, or Rome's.
+  instruments?: 'band' | 'antica' | 'romana'
   // The colours of the drummer's riser, its face and its top edge.
   riser?: { fill: string; edge: string }
   // What stands in front of the band, over it (a crowd), in the stage's own
