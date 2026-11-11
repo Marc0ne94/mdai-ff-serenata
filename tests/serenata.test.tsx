@@ -4,6 +4,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import { band } from '../hooks/scene'
 import { SCENERIES } from '../hooks/sets'
 import { flight } from '../hooks/sets/codice'
+import { fills } from '../hooks/sets/domanda'
 import { shadow } from '../hooks/sets/meridiana'
 import { PROFILES, STYLES } from '../tools/profiles.mjs'
 import type { Song } from '../hooks/song'
@@ -699,12 +700,13 @@ test('each album plays in its own ambience: the band in its club, HANA in a data
   // MDO's evening: wine walls, rose beams, flower crowns, a riser in the walls' wine.
   // In principio builds up its own way: bass at bar 6, a heartbeat from bar 8;
   // so does Centottanta: the kick from the first bar, the acid line at bar 2;
+  // and Dimmi cos'è, which has a test of its own;
   // every other song keeps the fixed form, and the stage follows each.
   const principio = SONGS.find(s => s.id === 'in-principio')!
   expect([principio.bassAt, principio.drumsAt]).toEqual([+(6 * principio.bar).toFixed(3), +(8 * principio.bar).toFixed(3)])
   const centottanta = SONGS.find(s => s.id === 'centottanta')!
   expect([centottanta.bassAt, centottanta.drumsAt]).toEqual([+(2 * centottanta.bar).toFixed(3), 0])
-  for (const song of SONGS.filter(s => s.id !== 'in-principio' && s.collection !== 'carica')) expect([song.bassAt, song.drumsAt]).toEqual([undefined, undefined])
+  for (const song of SONGS.filter(s => s.id !== 'in-principio' && s.id !== 'dimmi-cose' && s.collection !== 'carica')) expect([song.bassAt, song.drumsAt]).toEqual([undefined, undefined])
   const mdo = stageOf('in-principio')
   expect(mdo).toContain(`begin="${(principio.drumsAt ?? 0).toFixed(2)}s"`)
   expect(mdo).toContain('url(#serataWall)')
@@ -793,8 +795,8 @@ test('Centottanta has a form of its own: two verses, a roll and a breakdown, thr
   const last = drops[2]!
   expect(stage).toContain(`values="0 0;-1.6 0.6;1.6 -0.6;0 0" dur="${(song.pulse ?? 0).toFixed(2)}s" begin="${last.start.toFixed(2)}s"`)
   expect(stage).toContain(`values="1.24;1;1" keyTimes="0;0.4;1" dur="${(song.pulse ?? 0).toFixed(2)}s" begin="${last.start.toFixed(2)}s" end="${last.end.toFixed(2)}s"`)
-  // Every song but Carica's and Roma's keeps the first form, as it always had.
-  for (const other of SONGS) expect(other.sections === undefined).toBe(other.collection !== 'carica' && other.collection !== 'roma')
+  // Every song but Carica's, Roma's and Dimmi cos'è keeps the first form, as it always had.
+  for (const other of SONGS) expect(other.sections === undefined).toBe(other.collection !== 'carica' && other.collection !== 'roma' && other.id !== 'dimmi-cose')
 })
 
 test('Carica has four songs: Centottanta, Cutover at 190, Venerdì played happy, and Fable 5.2', () => {
@@ -854,9 +856,9 @@ test('Fable 5.2 is what a new install starts on, at 200, the band dancing in its
 test('Roma has a song, Carpe diem: Horace in a house in Pompeii, played by the Roman orchestra', () => {
   const song = SONGS.find(s => s.id === 'carpe-diem')!
   expect(songsIn('roma').map(s => s.id)).toEqual(['carpe-diem'])
-  // After every other song, so each keeps its number in /canta; Fable 5.2 is still what a new install starts on.
-  expect(SONGS.at(-1)?.id).toBe('carpe-diem')
-  expect(SONGS.findIndex(s => s.id === 'fable')).toBe(SONGS.length - 2)
+  // Right after Fable 5.2, so every song before it keeps its number in /canta; Fable 5.2 is still what a new install starts on.
+  expect(SONGS.findIndex(s => s.id === 'carpe-diem')).toBe(SONGS.findIndex(s => s.id === 'fable') + 1)
+  expect(songOf(null).id).toBe('fable')
   expect(song.source).toContain('Orazio')
   // One sound and the advanced voice, which sings its b, g, v and z: nothing to set.
   expect(soundsOf(song)).toEqual(['romana'])
@@ -907,5 +909,51 @@ test('Roma has a song, Carpe diem: Horace in a house in Pompeii, played by the R
   const before = (a1 - a2) / (t2 - t1)
   expect(near(before, (a3 - a4) / (t4 - t3))).toBe(true)
   expect((a2 - a3) / (t3 - t2)).toBeGreaterThan(3 * before)
+  expect(stage.length).toBeLessThan(131072)
+})
+
+test("Dimmi cos'è is a dance song for the band's own club: the kick from the first bar, the Claudes nodding in the drops", () => {
+  const song = SONGS.find(s => s.id === 'dimmi-cose')!
+  // The last song of the band and of the list: every song before it keeps its number in /canta.
+  expect(songsIn('band').map(s => s.id)).toEqual(['serenata', 'canzone-2', 'canzone-3', 'dimmi-cose'])
+  expect(SONGS.at(-1)?.id).toBe('dimmi-cose')
+  expect(ambienceOf(song)).toBe('club')
+  // At 124, in one sound and in the advanced voice: nothing to set.
+  expect(song.bpm).toBe(124)
+  expect(soundsOf(song)).toEqual(['dance'])
+  expect(voicesOf(song, 'dance')).toEqual(['avanzato'])
+  expect(hasSettings(song, 'dance')).toBe(false)
+  // It builds up its own way: the kick from the first bar, the bass with the first verse, at bar 4.
+  expect([song.drumsAt, song.bassAt]).toEqual([0, +(4 * song.bar).toFixed(3)])
+  expect(sectionsOf(song).map(s => s.part)).toEqual(['intro', 'verse', 'drop', 'verse', 'break', 'drop', 'outro'])
+  expect(song.lines).toHaveLength(18)
+  // The refrain asks twice in each drop; the last line answers.
+  const words = song.lines.map(line => line.syls.map(s => s.text).join('').trim())
+  expect(words.filter(w => w === "Dimmi cos'è, cos'è l'amore!")).toHaveLength(4)
+  expect(words.at(-1)).toBe('Forse non lo so: ma so che sei tu!')
+  // The club as it always was, and over it the mirror ball, which takes no taps.
+  const stage = band(1, song)
+  expect(stage).toContain('url(#beamPurple)')
+  expect(stage).toContain('url(#domandaBall)')
+  expect(stage).toContain('pointer-events="none"')
+  // The four Claudes nod in the drops, on the beat; in no other song. They do not jump as in Fable 5.2.
+  const drops = partsOf(song, 'drop')
+  expect(stage.match(/values="14 4 6;0 4 6"/g)?.length).toBe(4)
+  expect(stage).toContain(`values="14 4 6;0 4 6" dur="${song.beat.toFixed(2)}s" begin="${drops.map(d => d.start.toFixed(2) + 's').join(';')}" end="${[drops[0]!.end, song.outroAt + 1].map(t => t.toFixed(2) + 's').join(';')}"`)
+  for (const other of SONGS.filter(s => s.id !== 'dimmi-cose')) expect(band(1, other)).not.toContain('14 4 6')
+  expect(stage).not.toContain('-0.5 -1.5')
+  // Its scenery: the signs; the screen's answers, the last one at the last line.
+  expect(stage).toContain("DIMMI COS'È")
+  expect(stage).toContain('SEI TU ♥')
+  for (const found of ['404', 'NaN', 'bug?']) expect(stage).toContain(`>${found}<`)
+  const answered = song.lines.at(-1)!.start
+  expect(stage).toContain(`>TU ♥<set attributeName="visibility" to="visible" begin="${answered.toFixed(2)}s"`)
+  // The heart fills from its tip up, a row every three lines, the top row in
+  // the last refrain; its question mark goes when the last line answers.
+  const rows = fills(song)
+  expect(rows.map(r => r.row)).toEqual([5, 4, 3, 2, 1, 0])
+  expect(rows.map(r => r.at)).toEqual([0, 3, 6, 9, 12, 15].map(i => song.lines[i]!.start))
+  expect(rows.at(-1)!.at).toBeGreaterThanOrEqual(drops[1]!.start)
+  expect(stage).toContain(`>?<set attributeName="opacity" to="0" begin="${answered.toFixed(2)}s"`)
   expect(stage.length).toBeLessThan(131072)
 })

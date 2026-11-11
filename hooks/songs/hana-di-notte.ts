@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/hana-di-notte.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built eedc2f7d0ab41b6da59ce319e48e4796cb7eb23496e7605668d6f8876215109e
+// built d3203c4efd9ad7b866e09587619220acf78d289229c645532648cd4713b5c4cf
 // source audio/hana-di-notte.m4a 4ace38a8feba628f35fbaf276c6bbdc1365e647a37391083831c71eef7f4ddc1 373854c7cb41ba4f07de9f1449f7dab2896c4548b3958cbd1c9c8c3cc447f3e0
 // source audio/hana-di-notte-avanzato.m4a 60bab5b98519a1185463a9bd3f594b56d79ba648c0c582adebbca6af3f336513 4fc14c9988efc6802d3049a87766baeda95f10cc52e259372e083d12aba04fe0
 import type { Sounds, Timing } from '../song'

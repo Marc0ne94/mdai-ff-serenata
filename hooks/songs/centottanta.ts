@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/centottanta.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built 65a2cfb1b4bf622b7c4f9961ec06c1fed00985bdb248d749339edd9921d0d33f
+// built 7ce8241f36ea8df4f5bbd60b01a947966a3c9997fd8b0a3962a33c4807002600
 // source audio/centottanta.m4a 3d80850c36c9c12ce5049bb6c4fe0c3dd83ec18523e37ac8917f0a0543653b63 8d41bf8afbb0ab44bfe90c1bb8cdd7cb09163207c24b2ba8865565f8dab1f2dd
 import type { Sounds, Timing } from '../song'
 

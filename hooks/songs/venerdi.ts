@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/venerdi.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built 295c702fbe14bbff56e865f58d000ffcf8ea123c12938c0dabff3b2ce58c1548
+// built 9a9c3d1050c5c32a112ba42bee543ab68f51a716db7b78af4754d8b036ac48ad
 // source audio/venerdi.m4a 3110cb02dbe49bb445f497a41c62f1060e0cc66c1bb58c58ea00769b9fb2328a e2e6a16f741209dfa81b27801290a2f2a3a9a8dc84577a4882ef3645dcbe1f12
 import type { Sounds, Timing } from '../song'
 

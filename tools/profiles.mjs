@@ -9,7 +9,9 @@
 // beat, an acid line, stabs and the hoover), played dark or happy (happy
 // hardcore: a bouncing bass, a bright piano, a supersaw); or `romana`, what
 // played in Rome (the hydraulis, a water organ; the cithara; the cornu, a
-// round horn of natural notes; the tibia; tympanum, scabellum and cymbala).
+// round horn of natural notes; the tibia; tympanum, scabellum and cymbala); or
+// `dance`, eurodance (the kick on every beat, the bass off it, an organ riff,
+// strings, claps and hats).
 export const PROFILES = {
   pop: { orchestra: 'pop' },
   plettro: { orchestra: 'antica', lyre: 'plettro' },
@@ -17,6 +19,7 @@ export const PROFILES = {
   rave: { orchestra: 'rave' },
   happy: { orchestra: 'rave', mood: 'happy' },
   romana: { orchestra: 'romana' },
+  dance: { orchestra: 'dance' },
 }
 
 // `classico`, the first voice, which sings the letters it knows and skips

@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/un-altro-me-stesso.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built 109d917171cdf01950838dddbf5847e5c9517f933b676c225d8bad874584ec54
+// built e3b60db38348c9de3d61c59357cd86052007f73414b5b97556916d931c4ed1cb
 // source audio/un-altro-me-stesso.m4a 63a95c9ddee748550d79dae34f1c3f80bdf257d289840d364ec0106e33a48183 d76e97ab8248f791f7ba514655eecfea8b651bb912a4edc619ce774a1b5ba057
 // source audio/un-altro-me-stesso-avanzato.m4a 642050fb2b97b6267761440b8723276ec34a21d82e19dbc543697e1a0d33b9c8 2ca36ff03365ac7155999af06c46e03a65171e3ccd47668ebdc0d21b4c2c247d
 // source audio/un-altro-me-stesso-dita.m4a 4687609a74237025cdc5a2af4265418993f5a262adab7451adb3bb40d4cf815d 6af164e3188707d10a5de115f94db0c4ca1b26557c59358d3b786f5bd4015388

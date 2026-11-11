@@ -548,6 +548,7 @@ const ORCHESTRA_BANDS = {
   pop: popBand,
   antica: anticaBand,
   romana: romanaBand,
+  dance: danceBand,
   rave: raveBand,
 }
 
@@ -1310,6 +1311,259 @@ function romanaBand() {
   })
   // The cups clashed where each drop starts and on the last bar of the last.
   for (const bar of CRASH_BARS) struck(bar * BAR, CUPS, 1.4, DRUMS * 0.14, -0.3, 0.5)
+}
+
+// ---------- the dance orchestra: eurodance ----------
+// A club in the nineties. The kick on every beat, round and short (a sine
+// falling from a click to its thud), and everything else set around it: the
+// bass off the beat, and an octave up on the last sixteenth in the drops; a
+// clap on the second and fourth beat; an open hat between the beats, closed
+// ones on the sixteenths in the drops. An organ of drawbars, struck and gone,
+// plays the riff: each chord's root, third, fifth, third and root, long,
+// short, long, short, long, with the chord stabbed under the long ones.
+// Strings hold the chord in the verses and the breaks, ducking under each
+// kick; and the voice comes back three sixteenths later, softly, on the left,
+// and again on the right.
+// Its arrangement on the form: the kick from the heartbeat bar, out in the
+// breaks, where a roll of the snare and a rising hiss lead into the drop; the
+// bass from the bass bar; claps and hats from the drums bar; the strings from
+// the pad bar, wherever the riff is not; the riff in the intro, the drops and
+// the outro, an octave doubled in the last drop; a crash where each drop
+// starts; in the outro the kick to the last bar, which is one chord left to
+// ring.
+function danceBand() {
+  const isBreak = bar => partOf(bar) === 'break'
+  const LAST_BAR = TOTAL_BARS - 1
+  const LAST_DROP = DROPS[DROPS.length - 1]
+  const kicked = bar => bar >= HEARTBEAT_BAR && bar < LAST_BAR && !isBreak(bar)
+  const riffed = bar => bar < INTRO_BARS || isDrop(bar) || bar >= OUTRO_BAR
+  // How loud each plays, set so that the band sits against the voice as the
+  // band of the club does (see bandByLine).
+  const KICK = 0.5
+  const BASS = 0.3
+  const ORGAN = 0.12
+  const STRINGS = 0.024
+  const HAT = 0.05
+  const CLAP = 0.14
+  // The chord's first three tones within an octave from `lo`, low to high.
+  const voiced = (r, iv, lo) =>
+    iv
+      .slice(0, 3)
+      .map(x => {
+        let m = r + x
+        while (m < lo) m += 12
+        while (m >= lo + 12) m -= 12
+        return m
+      })
+      .sort((a, b) => a - b)
+
+  function kick(t0, gain) {
+    const start = Math.round(t0 * SR)
+    let ph = 0
+    for (let n = 0; n < 0.32 * SR; n++) {
+      const t = n / SR
+      ph += (2 * Math.PI * (52 + 130 * Math.exp(-t * 38))) / SR
+      const s = Math.tanh((Math.sin(ph) * Math.exp(-t * 8.5) + (rand() * 2 - 1) * 0.25 * Math.exp(-t * 400)) * 1.8)
+      addStereo(start + n, s * gain * clamp((0.32 - t) / 0.02), 0, 0.03)
+    }
+  }
+  // The bass: a saw whose highs die first, plucked.
+  function bass(t0, midi, dur, gain) {
+    const f = mtof(midi)
+    const start = Math.round(t0 * SR)
+    const len = Math.round((dur + 0.06) * SR)
+    const H = Math.min(10, Math.floor(3000 / f))
+    for (let n = 0; n < len; n++) {
+      const t = n / SR
+      let env = clamp(t / 0.004)
+      if (t > dur) env *= Math.exp(-(t - dur) / 0.012)
+      let s = 0
+      for (let h = 1; h <= H; h++) s += (Math.sin(2 * Math.PI * f * h * t) / h) * Math.exp(-t * (2 + 5 * (h - 1)))
+      addStereo(start + n, s * env * gain, 0, 0.03)
+    }
+  }
+  // The organ: five drawbars, a click as the key goes down, loud at once and
+  // then held lower.
+  const DRAWBARS = [1, 0.7, 0.45, 0.2, 0.1]
+  function organ(t0, midi, dur, gain, pan) {
+    const f = mtof(midi)
+    const start = Math.round(t0 * SR)
+    const len = Math.round((dur + 0.1) * SR)
+    for (let n = 0; n < len; n++) {
+      const t = n / SR
+      let env = clamp(t / 0.003) * (0.45 + 0.55 * Math.exp(-t * 14))
+      if (t > dur) env *= Math.exp(-(t - dur) / 0.02)
+      let s = (rand() * 2 - 1) * 0.4 * Math.exp(-t * 700)
+      for (let h = 0; h < DRAWBARS.length; h++) s += DRAWBARS[h] * Math.sin(2 * Math.PI * f * (h + 1) * t)
+      addStereo(start + n, s * env * gain, pan, 0.3)
+    }
+  }
+  // The strings: three saws a few cents apart on each note, their highs cut,
+  // ducking under each kick when there is one.
+  function strings(t0, t1, midis, gain, ducked) {
+    const start = Math.round(t0 * SR)
+    const end = Math.min(N, Math.round((t1 + 0.6) * SR))
+    const a = 1 - Math.exp((-2 * Math.PI * 1400) / SR)
+    for (const midi of midis) {
+      ;[-9, 0, 9].forEach((cents, i) => {
+        const f = mtof(midi) * Math.pow(2, cents / 1200)
+        let ph = rand()
+        let y1 = 0
+        let y2 = 0
+        for (let n = start; n < end; n++) {
+          const t = (n - start) / SR
+          ph += f / SR
+          if (ph >= 1) ph -= 1
+          y1 += a * (2 * ph - 1 - y1)
+          y2 += a * (y1 - y2)
+          let env = clamp(t / 0.15)
+          if (n / SR > t1) env *= Math.exp(-(n / SR - t1) / 0.25)
+          const duck = ducked ? 1 - 0.6 * Math.exp(-((n / SR) % BEAT) / 0.1) : 1
+          addStereo(n, y2 * env * duck * gain, (i - 1) * 0.7, 0.5)
+        }
+      })
+    }
+  }
+  // Noise with its lows taken out: a hat (short or open), and a crash.
+  function hiss(t0, gain, decay, pan, wet) {
+    const start = Math.round(t0 * SR)
+    let p1 = 0
+    let p2 = 0
+    for (let n = 0; n < decay * 6 * SR; n++) {
+      const w = rand() * 2 - 1
+      const d1 = w - p1
+      const d2 = d1 - p2
+      p1 = w
+      p2 = d1
+      addStereo(start + n, d2 * Math.exp(-n / SR / decay) * gain * clamp(n / (0.002 * SR)), pan, wet)
+    }
+  }
+  const resonator = (f, bw) => {
+    const r = Math.exp((-Math.PI * bw) / SR)
+    return { b1: 2 * r * Math.cos((2 * Math.PI * f) / SR), b2: -r * r, g: 1 - r, y1: 0, y2: 0 }
+  }
+  const resonate = (res, x) => {
+    const y = res.g * x + res.b1 * res.y1 + res.b2 * res.y2
+    res.y2 = res.y1
+    res.y1 = y
+    return y
+  }
+  // A clap: three quick bursts of noise and a tail, around 1.2 kHz.
+  function clap(t0, gain) {
+    const start = Math.round(t0 * SR)
+    const res = resonator(1200, 1000)
+    for (let n = 0; n < 0.28 * SR; n++) {
+      const t = n / SR
+      let env = 0
+      for (const at of [0, 0.011, 0.023]) if (t >= at) env = Math.max(env, Math.exp(-(t - at) / 0.005))
+      if (t >= 0.023) env = Math.max(env, 0.5 * Math.exp(-(t - 0.023) / 0.06))
+      addStereo(start + n, resonate(res, rand() * 2 - 1) * env * gain * 8, -0.1, 0.35)
+    }
+  }
+  function snare(t0, gain) {
+    const start = Math.round(t0 * SR)
+    let prev = 0
+    for (let n = 0; n < 0.14 * SR; n++) {
+      const t = n / SR
+      const w = rand() * 2 - 1
+      const s = (w - prev) * 0.5 * Math.exp(-t * 30) + Math.sin(2 * Math.PI * 190 * t) * 0.4 * Math.exp(-t * 36)
+      prev = w
+      addStereo(start + n, s * gain, 0.05, 0.4)
+    }
+  }
+  // A hiss that rises, in pitch and in level, to the moment a drop starts.
+  function riser(t0, t1, gain) {
+    const start = Math.round(t0 * SR)
+    const len = Math.round((t1 - t0) * SR)
+    let y1 = 0
+    let y2 = 0
+    for (let n = 0; n < len; n++) {
+      const u = n / len
+      const f = 400 * Math.pow(18, u)
+      const r = Math.exp((-Math.PI * f * 0.5) / SR)
+      const y = (1 - r) * (rand() * 2 - 1) + 2 * r * Math.cos((2 * Math.PI * f) / SR) * y1 - r * r * y2
+      y2 = y1
+      y1 = y
+      addStereo(start + n, y * u * u * gain * 6, 0, 0.5)
+    }
+  }
+
+  // The drums.
+  for (let bar = 0; bar < TOTAL_BARS; bar++) {
+    const t0 = bar * BAR
+    // The kick a little softer outside the drops, so that they land.
+    if (kicked(bar)) for (let b = 0; b < 4; b++) kick(t0 + b * BEAT, KICK * (isDrop(bar) || bar >= OUTRO_BAR ? 1 : 0.85))
+    if (bar === LAST_BAR) kick(t0, KICK)
+    if (bar < DRUMS_BAR || bar === LAST_BAR || isBreak(bar)) continue
+    clap(t0 + BEAT, CLAP)
+    clap(t0 + 3 * BEAT, CLAP)
+    for (let b = 0; b < 4; b++) {
+      hiss(t0 + (b + 0.5) * BEAT, HAT, 0.07, 0.25, 0.1)
+      if (isDrop(bar)) for (const q of [0, 0.25, 0.75]) hiss(t0 + (b + q) * BEAT, HAT * 0.6, 0.015, 0.25, 0.1)
+    }
+  }
+  SECTIONS.forEach((section, i) => {
+    if (section.part !== 'break' || SECTIONS[i + 1]?.part !== 'drop') return
+    const end = section.to * BAR
+    for (let k = 0; k < 16; k++) snare(end - ((16 - k) * BEAT) / 4, CLAP * (0.4 + 1.2 * (k / 15)))
+    riser(end - Math.min(2, section.to - section.from) * BAR, end, HAT * 3)
+  })
+  for (const bar of CRASH_BARS) hiss(bar * BAR, HAT * 2.2, 0.5, -0.3, 0.4)
+
+  // The bass.
+  SEGMENTS.forEach(({ name, beats, t0, bar }) => {
+    if (bar < BASS_BAR || isBreak(bar)) return
+    const r = CHORD[name][0]
+    if (bar === LAST_BAR) {
+      bass(t0, r, BAR, BASS)
+      return
+    }
+    for (let b = 0; b < beats; b++) {
+      const t = t0 + b * BEAT
+      if (isDrop(bar)) {
+        bass(t + BEAT / 2, r, BEAT * 0.22, BASS)
+        bass(t + 0.75 * BEAT, r + 12, BEAT * 0.2, BASS * 0.8)
+      } else bass(t + BEAT / 2, r, BEAT * 0.4, BASS * 0.8)
+    }
+  })
+
+  // The riff and its stabs; the last bar is one chord.
+  const RIFF = [[0, 1], [1, 0.5], [1.5, 1], [2.5, 0.5], [3, 1]]
+  SEGMENTS.forEach(({ name, beats, t0, bar }) => {
+    const [r, iv] = CHORD[name]
+    let root = r
+    while (root < 64) root += 12
+    const stab = voiced(r, iv, 57)
+    if (bar === LAST_BAR) {
+      ;[...stab, root].forEach((m, i) => organ(t0, m, BAR + 1, ORGAN * 0.8, (i - 1.5) * 0.4))
+      return
+    }
+    if (!riffed(bar)) return
+    const tones = [root, root + iv[1], root + iv[2], root + iv[1], root]
+    const isLast = bar >= LAST_DROP.from && bar < LAST_DROP.to
+    const level = ORGAN * (bar < INTRO_BARS ? 0.7 : 1)
+    RIFF.forEach(([at, long], i) => {
+      if (at >= beats) return
+      const t = t0 + at * BEAT
+      organ(t, tones[i], long * BEAT * 0.8, level, 0.3)
+      if (isLast) organ(t, tones[i] + 12, long * BEAT * 0.8, level * 0.5, 0.3)
+      if (long === 1) stab.forEach((m, k) => organ(t, m, BEAT * 0.35, level * 0.55, -0.4 + k * 0.2))
+    })
+  })
+
+  // The strings, wherever the riff is not.
+  SEGMENTS.forEach(({ name, beats, t0, bar }) => {
+    if (bar < PAD_BAR || riffed(bar)) return
+    const [r, iv] = CHORD[name]
+    strings(t0, t0 + beats * BEAT, [r + 12, ...voiced(r, iv, 57)], STRINGS * (isBreak(bar) ? 1.4 : 1), kicked(bar))
+  })
+
+  // The voice's echoes.
+  const echo = Math.round(0.75 * BEAT * SR)
+  for (let n = echo; n < N; n++) {
+    L[n] += voc[n - echo] * 0.2
+    if (n >= 2 * echo) Rt[n] += voc[n - 2 * echo] * 0.13
+  }
 }
 
 // ---------- the rave orchestra: hardcore techno ----------

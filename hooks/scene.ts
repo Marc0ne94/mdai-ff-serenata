@@ -152,9 +152,20 @@ function dance() {
   }
 }
 
+// How the band nods in a song that asks for it (`nod`): in the drops every
+// Claude tips to one side from where its head meets its legs, on the beat,
+// and stands straight again between the beats.
+function nod() {
+  const { SONG, PULSE: beat } = tuned()
+  if (!SONG.nod) return ''
+  const lit = dropLights(SONG)
+  return `<animateTransform attributeName="transform" type="rotate" values="14 4 6;0 4 6" dur="${sec(beat)}" begin="${lit.on}" end="${lit.off}" calcMode="discrete" repeatCount="indefinite"/>`
+}
+
 // One Claude in cells of `u` pixels: an 8×6 body, four legs below it, and
 // arms on rows 2–3 unless the member brings its own; `front` is drawn over
-// it in the same cells (an instrument, a hand). It dances when its song does.
+// it in the same cells (an instrument, a hand). It dances or nods when its
+// song does.
 function member({ cx, feet, u, blink, arms, front, face, hop }: Member) {
   const { AMBIENCE } = tuned()
   const eye = (x: number) =>
@@ -165,7 +176,9 @@ function member({ cx, feet, u, blink, arms, front, face, hop }: Member) {
 ${box(0, 0, 8, 6, ORANGE)}${arms ?? box(-2, 2, 2, 2, ORANGE) + box(8, 2, 2, 2, ORANGE)}${legs}${eye(1)}${eye(6)}${face ?? ''}${front ?? ''}${AMBIENCE.crown ?? ''}
 </g>`
   const { jump, wiggle } = dance()
-  const danced = jump ? `<g>${jump}<g>${wiggle}${body}</g></g>` : body
+  const tip = nod()
+  const nodding = tip ? `<g>${tip}${body}</g>` : body
+  const danced = jump ? `<g>${jump}<g>${wiggle}${nodding}</g></g>` : nodding
   return `<ellipse cx="${cx}" cy="${feet}" rx="${6 * u}" ry="${u * 0.5}" fill="#000" opacity="0.3"/>
 <g transform="translate(${cx - 4 * u} ${feet - 8 * u}) scale(${u})" shape-rendering="crispEdges">${danced}</g>`
 }

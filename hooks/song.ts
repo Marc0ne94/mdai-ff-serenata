@@ -1,6 +1,7 @@
 import { AUDIO as CARPE_DIEM_AUDIO, TIMING as CARPE_DIEM_TIMING } from './songs/carpe-diem'
 import { AUDIO as CENTOTTANTA_AUDIO, TIMING as CENTOTTANTA_TIMING } from './songs/centottanta'
 import { AUDIO as CUTOVER_AUDIO, TIMING as CUTOVER_TIMING } from './songs/cutover'
+import { AUDIO as DIMMI_COSE_AUDIO, TIMING as DIMMI_COSE_TIMING } from './songs/dimmi-cose'
 import { AUDIO as DIPENDE_DA_ME_AUDIO, TIMING as DIPENDE_DA_ME_TIMING } from './songs/dipende-da-me'
 import { AUDIO as FABLE_AUDIO, TIMING as FABLE_TIMING } from './songs/fable'
 import { AUDIO as GO_LIVE_AUDIO, TIMING as GO_LIVE_TIMING } from './songs/go-live'
@@ -64,7 +65,7 @@ export const partsOf = (song: Timing, part: Part) => sectionsOf(song).filter(s =
 // (its voice style). A song is rendered in the pairs its file in tools/songs
 // declares, and in no other: the menus offer exactly those, in this order.
 export type VoiceId = 'classico' | 'avanzato'
-export type SoundId = 'pop' | 'plettro' | 'dita' | 'rave' | 'happy' | 'romana'
+export type SoundId = 'pop' | 'plettro' | 'dita' | 'rave' | 'happy' | 'romana' | 'dance'
 export type Voices = Partial<Record<VoiceId, string>>
 export type Sounds = Partial<Record<SoundId, Voices>>
 export const VOICE_STYLES: readonly { id: VoiceId; label: string }[] = [
@@ -78,6 +79,7 @@ export const SOUND_PROFILES: readonly { id: SoundId; label: string }[] = [
   { id: 'rave', label: 'Rave' },
   { id: 'happy', label: 'Happy' },
   { id: 'romana', label: 'Romana' },
+  { id: 'dance', label: 'Dance' },
 ]
 
 // The collections (albums) the songs are gathered in, in the menu's order: the
@@ -99,7 +101,7 @@ export const COLLECTIONS: readonly { id: CollectionId; label: string; ambience: 
 ]
 
 // The sceneries of hooks/sets, by name.
-export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio' | 'batteria' | 'cutover' | 'venerdi' | 'favola' | 'meridiana'
+export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio' | 'batteria' | 'cutover' | 'venerdi' | 'favola' | 'meridiana' | 'domanda'
 
 export type Song = Timing & {
   // Its address in the menus, in /canta and in the store: short, never reused.
@@ -116,6 +118,9 @@ export type Song = Timing & {
   // Whether the band dances in its drops: jumping and swaying on the beat,
   // wiggling in the last drop; else it only bobs, as in every song.
   dance?: boolean
+  // Whether the band nods in its drops: every Claude tips its head to one
+  // side on the beat and back between the beats, all together.
+  nod?: boolean
 }
 
 // The song for the day Claude Fable 5.2 came out, told as a fable, the band
@@ -187,6 +192,9 @@ export const SONGS: readonly Song[] = [
     source: 'Orazio, Odi I, 11 («Tu ne quaesieris»): il ritornello «carpe diem» è nel suo latino',
     ...CARPE_DIEM_TIMING,
   },
+  // A dance song for the band's own club, in the manner of the eurodance of
+  // the nineties: a Claude asks what love is, and the band nods to it.
+  { id: 'dimmi-cose', title: "Dimmi cos'è", collection: 'band', scenery: 'domanda', audio: DIMMI_COSE_AUDIO, nod: true, ...DIMMI_COSE_TIMING },
 ]
 
 // The song with this id; when none is picked yet (a new install) or no song
