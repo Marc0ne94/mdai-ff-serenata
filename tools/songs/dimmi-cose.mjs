@@ -5,15 +5,16 @@
 // its version. In the break it gives up counting: it does not know what it
 // is, only that it looks like you; and the last line of the last refrain
 // says so.
-// An original song in the manner of the eurodance of 1993 (hence the seed):
-// words, tune and riff are its own, and follow no song's. A minor, four
+// An original song in the manner of the eurodance of the nineties: its
+// words, its tune and its riff are its own. A minor, four
 // chords a refrain (A minor, F, C, G), at 124; the refrain leaps a fifth onto
 // «cos'è», and the question after it climbs and is left open. Played by the
 // dance orchestra (see tools/synth.mjs): the band nods to it in the drops.
-// Sung only in the advanced voice: its words need b, g, v and z.
+// Sung only in the advanced voice: its words need b, g and v (libri, lingue,
+// versione).
 export default {
   bpm: 124,
-  seed: 1993,
+  seed: 20261117,
   audio: { dance: { avanzato: 'audio/dimmi-cose.m4a' } },
   // The voice a little above the other songs, to ride over the kick, and the
   // whole song at their level (see tools/synth.mjs).

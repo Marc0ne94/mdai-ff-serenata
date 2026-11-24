@@ -59,7 +59,7 @@ export default {
     ] },
     { bar: 4, syl: [
       ['che ', 'che', 64, 0.5], ['fi', 'fi', 67, 1], ['ne a ', 'nea', 69, 0.5], ['me, ', 'me', 71, 1], ['a ', 'a', 71, 0.5], ['te ', 'te', 72, 1],
-      ['da', 'da', 69, 0.5], ['ran', 'ran', 67, 0.5], ['no i ', 'noi', 65, 0.5], ['dèi; ', 'dei', 62, 1.5], ['', null, null, 0.5],
+      ['da', 'da', 69, 0.5], ['ran', 'ran', 67, 0.5], ['no ', 'no', 65, 0.25], ['gli ', 'gli', 65, 0.25], ['dèi; ', 'dei', 62, 1.5], ['', null, null, 0.5],
     ] },
     // Nec Babylonios temptaris numeros. Ut melius, quidquid erit, pati.
     { bar: 6, syl: [

@@ -461,6 +461,7 @@ function cornicen() {
   const spans: [number, number][] = [[0, sectionsOf(SONG)[0]?.end ?? 0]]
   for (const [start, end] of [...dropLights(SONG).spans, [SONG.outroAt, BAND_END] as [number, number]]) {
     const last = spans.at(-1)
+    if (end <= start) continue
     if (last && start <= last[1] + 0.01) last[1] = Math.max(last[1], end)
     else spans.push([start, end])
   }

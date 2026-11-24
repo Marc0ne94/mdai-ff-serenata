@@ -1,7 +1,7 @@
 // Written by tools/render.mjs from tools/songs/carpe-diem.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built d432c9bf1f46f24fe745c6d4e04c6eb2e6a1cac43150ac273f642741c018816d
-// source audio/carpe-diem.m4a 6d89417755783cfb0c489c1b9ff554d32944a1822638383d6075b74690ed547f 1012bbfadb19ac512625120af7b8a9e287a174d9105e60503b47920af2e7cbab
+// built 88c891a11119b3784fac856f987dc12a5b077f48f7d4dae45283c01137b5ef32
+// source audio/carpe-diem.m4a da488b8709118a8686bf4e0edf1ca623b00804edb5944f8e457811f72bafa4c2 a95a38ac28ab7b8c59614653cec5d2cf6d0a914f7bba5a7dc925cc2ea0fc62b4
 import type { Sounds, Timing } from '../song'
 
 export const TIMING: Timing = {
@@ -44,7 +44,8 @@ export const TIMING: Timing = {
       { text: "te ", start: 13.929, end: 14.643, open: 0.75 },
       { text: "da", start: 14.643, end: 15, open: 1 },
       { text: "ran", start: 15, end: 15.357, open: 1 },
-      { text: "no i ", start: 15.357, end: 15.714, open: 0.75 },
+      { text: "no ", start: 15.357, end: 15.536, open: 0.75 },
+      { text: "gli ", start: 15.536, end: 15.714, open: 0.5 },
       { text: "dèi; ", start: 15.714, end: 16.786, open: 0.75 },
     ] },
     { start: 17.143, end: 22.5, syls: [

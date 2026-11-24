@@ -112,10 +112,13 @@ const LAST_HOUR = 20
 const JUMP = 40
 
 // The shadow's way across the hours: still until the first word, then steady
-// to the outro; through the last break it jumps ahead instead.
+// to the outro; through the last break it jumps ahead instead (a break after
+// the first word, and shorter than the time the shadow has: else it only
+// goes steady).
 export function shadow(song: Song) {
   const start = song.lines[0]?.start ?? 0
-  const gap = partsOf(song, 'break').at(-1)
+  const last = partsOf(song, 'break').filter(part => part.start > start).at(-1)
+  const gap = last && song.outroAt - start > last.end - last.start ? last : undefined
   const sweep = FIRST_HOUR - LAST_HOUR - (gap ? JUMP : 0)
   const steady = song.outroAt - start - (gap ? gap.end - gap.start : 0)
   const points: [number, number][] = [[0, FIRST_HOUR], [start, FIRST_HOUR]]

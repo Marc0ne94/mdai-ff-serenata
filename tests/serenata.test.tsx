@@ -957,3 +957,21 @@ test("Dimmi cos'è is a dance song for the band's own club: the kick from the fi
   expect(stage).toContain(`>?<set attributeName="opacity" to="0" begin="${answered.toFixed(2)}s"`)
   expect(stage.length).toBeLessThan(131072)
 })
+
+test('every stage is animated with well-formed timings', () => {
+  for (const song of SONGS) {
+    const stage = band(1, song)
+    // No attribute is empty where a list of moments goes, and none holds a number that failed to compute.
+    expect(stage).not.toMatch(/ (begin|end|dur|values|keyTimes)=""/)
+    expect(stage).not.toMatch(/="[^"]*(NaN|undefined|Infinity)[^"]*"/)
+    // Key times go from 0 to 1 and never back, one for each value: an animation with others is not played.
+    for (const [tag] of stage.matchAll(/<animate(?:Transform)?\b[^>]*keyTimes="[^"]*"[^>]*>/g)) {
+      const times = (/keyTimes="([^"]*)"/.exec(tag)?.[1] ?? '').split(';').map(Number)
+      const values = /values="([^"]*)"/.exec(tag)?.[1]?.split(';')
+      expect(times[0]).toBe(0)
+      expect(times.at(-1)).toBe(1)
+      times.forEach((t, i) => expect(t).toBeGreaterThanOrEqual(times[i - 1] ?? 0))
+      if (values) expect(values).toHaveLength(times.length)
+    }
+  }
+})

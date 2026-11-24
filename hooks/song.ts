@@ -118,8 +118,8 @@ export type Song = Timing & {
   // Whether the band dances in its drops: jumping and swaying on the beat,
   // wiggling in the last drop; else it only bobs, as in every song.
   dance?: boolean
-  // Whether the band nods in its drops: every Claude tips its head to one
-  // side on the beat and back between the beats, all together.
+  // Whether the band nods in its drops: every Claude tips to one side on the
+  // beat and stands straight again between the beats, all together.
   nod?: boolean
 }
 
