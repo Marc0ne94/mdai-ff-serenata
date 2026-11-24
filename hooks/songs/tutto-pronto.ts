@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/tutto-pronto.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built 2117beeff88a032c6eff9f7842e7b49d22d41364afe2bd095f1f58e7fc495ea1
+// built aca84ddecf2fa9421064c7cff60b5df0a39a8a87c8e963fd68cca77fa76dc02c
 // source audio/tutto-pronto.m4a 21f9e608349ffd1a637e815fd8203342d5a57c819d62497117ec70581305ada6 65a545c608a260c0fad028ee7f25ce47efa6093952a909d878ef3e76883ffa70
 import type { Sounds, Timing } from '../song'
 

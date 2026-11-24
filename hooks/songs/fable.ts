@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/fable.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built dc5ab83058393f200fd0f578fba1811b4fa44af787f4eaaf5a4bca4b7233cd4d
+// built cb9089074e4072f35804613fe28ea2b16c8f2e1461538acc516fd8584e7cb38a
 // source audio/fable.m4a 75d7814cc69ea656e31537664e88ce801a675b4c6a17030d7d5f90cf46585c0b 864291ace258757b5bbec921287ec5d17827a74bd62cca8a51653a56bd8e39b0
 import type { Sounds, Timing } from '../song'
 

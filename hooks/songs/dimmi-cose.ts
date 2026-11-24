@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/dimmi-cose.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built 51d153808426b1dc97b0bc43e99e7b9999c59c404d9a164bb2593a7316f3afe3
+// built 1ddd7892b2a67d3623575e9dde898de1b8bd2d4c4f1be511ae2cecbc0eaa5a93
 // source audio/dimmi-cose.m4a 01e2913bcd0b3960fbe2d7a935e3052dd5f026ed8f90f1026112dbd69924d39a 7a92049fd6cdbaac707fc5145393a6004673893ad33aade37c1d14836a4b3565
 import type { Sounds, Timing } from '../song'
 

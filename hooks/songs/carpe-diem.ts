@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/carpe-diem.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built 88c891a11119b3784fac856f987dc12a5b077f48f7d4dae45283c01137b5ef32
+// built c246d848e8e1426f50d6a2c8849157eb6c3cf0aa51e1651bfe2b3824bb3ee760
 // source audio/carpe-diem.m4a da488b8709118a8686bf4e0edf1ca623b00804edb5944f8e457811f72bafa4c2 a95a38ac28ab7b8c59614653cec5d2cf6d0a914f7bba5a7dc925cc2ea0fc62b4
 import type { Sounds, Timing } from '../song'
 

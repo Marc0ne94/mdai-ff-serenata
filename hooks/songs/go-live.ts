@@ -1,6 +1,6 @@
 // Written by tools/render.mjs from tools/songs/go-live.mjs: render again, do not edit.
 // The timing is in seconds from the start of the audio, the same in every style.
-// built 03d255692bfbd355dfd297ab6a5e8134b3bdf37da1628d8dc6f470e55000d1e9
+// built 84c2375e0bd7cf241445bdc3eb7bc86f33f770e4b320e524bc0620270d475af5
 // source audio/go-live.m4a ee547d2a2e4f34eaf8c72fa862a319cd5d3e1fab39b5b3dc99a46765ebfc0c9b d1623d73e7ab421b05493b3229b659d21f7ba2253be6a5983ef0235310c3942d
 // source audio/go-live-avanzato.m4a ed1c272f2177b338ae163588bcb1e452fec08f5f301ffee0ea53ccf940550386 2547986d29ca5351fccc248011e70ac1cd008d1461766964764e113e5faa7a27
 import type { Sounds, Timing } from '../song'

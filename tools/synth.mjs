@@ -108,6 +108,15 @@ for (const tune of [SONG.cornu?.intro ?? [], SONG.cornu?.outro ?? []]) {
     if (!NATURAL.includes(note[0])) throw new Error(`the cornu has no note ${note[0]}: its tube gives ${NATURAL.join(', ')}`)
   }
 }
+// The metal orchestra's lead guitar plays a song's solo (see metalBand): a
+// note is [midi, beats], a rest [null, beats], and a third number bends up
+// into the note by that many semitones.
+for (const note of SONG.solo ?? []) {
+  const [midi, beats, bend] = Array.isArray(note) ? note : []
+  if (!(midi === null || isNumber(midi)) || !isNumber(beats) || beats <= 0 || !(bend === undefined || (isNumber(bend) && bend > 0))) {
+    throw new Error(`a solo note is [midi, beats] or [midi, beats, bend]: ${JSON.stringify(note)}`)
+  }
+}
 // The pair asked for is one the song declares.
 if (!(VOICE in (SONG.audio[PROFILE] ?? {}))) throw new Error(`the song is not sung in ${VOICE} in the profile ${PROFILE}`)
 for (const bar of BARS) {
@@ -550,6 +559,7 @@ const ORCHESTRA_BANDS = {
   romana: romanaBand,
   dance: danceBand,
   rave: raveBand,
+  metal: metalBand,
 }
 
 // ---------- the pop orchestra: piano, pad, bass, drums, lead and bells ----------
@@ -2140,6 +2150,402 @@ function raveBand() {
     L[n] += busL[n] * duck
     Rt[n] += busR[n] * duck
     send[n] += busSend[n] * duck
+  }
+}
+
+// ---------- the metal orchestra: rock and heavy metal ----------
+// Two rhythm guitars, one on each side, playing the same part a hair apart
+// (double tracking). Each string is plucked (Karplus-Strong: a burst of noise
+// running round a delay line one period long, a little duller and softer at
+// each pass), and the chord goes through an amp: the lows thinned before the
+// drive, clipped soft twice, the mids scooped, and the highs a speaker
+// cabinet does not give cut, so that they leave room for the voice. In the verses they chug
+// palm-muted (the hand on the strings by the bridge: short, dark notes) in a
+// gallop, an eighth and two sixteenths a beat, striking each new chord open;
+// in the drops open chords on every eighth, and in the last drop, when there
+// are more, an octave up besides. The bass doubles their roots an octave
+// down. The drums: a kick with the click of its beater, a snare in a big room,
+// toms, hats, a ride and crashes; the kick on every sixteenth in the drops.
+// A lead guitar plays the song's solo (`solo`) in the verse bars after the
+// first drop that no line covers: a held string, gliding from note to note,
+// swaying on the long ones and bent up into a note when the solo asks, through
+// the amp driven harder and echoing on the other side. The voice comes back
+// off a wall, a moment later, left and right.
+// Its arrangement on the form: the riff in the intro, on the left guitar alone
+// for its first bar; from there to the drums bar the stop, a chord a bar left
+// to ring, hit with the kick and a crash, and the toms rolling into the
+// drums; the bass from the bass bar; in the breaks the chords ring while the
+// floor tom keeps the beat, and the last bar of a break into a drop ends in
+// eighths that grow, under a snare roll; a crash where each drop starts and
+// every four bars in it, and at the start of each verse; a snare fill at the
+// end of a verse that runs into something else; in the outro a hit ringing
+// two beats and the toms rolling into the last one, which rings out.
+function metalBand() {
+  const isBreak = bar => partOf(bar) === 'break'
+  const LAST_BAR = TOTAL_BARS - 1
+  const LAST_DROP = DROPS[DROPS.length - 1]
+  const inLastDrop = bar => DROPS.length > 1 && bar >= LAST_DROP.from && bar < LAST_DROP.to
+  const sectionOf = bar => SECTIONS.find(s => bar >= s.from && bar < s.to)
+  const sung = bar => LINES.some(line => bar >= line.bar && bar < line.bar + 2)
+  // The solo's bars, one run of them: the verse bars after the first drop where no line is sung.
+  const SOLO_BARS = BARS.map((_, bar) => bar).filter(bar => partOf(bar) === 'verse' && bar >= DROPS[0].to && !sung(bar))
+  const soloAt = bar => SOLO_BARS.includes(bar)
+  if (SONG.solo) {
+    if (SOLO_BARS.length === 0) throw new Error('the song has a solo and no bars for it: verse bars after the first drop where no line is sung')
+    if (SOLO_BARS.some((bar, i) => i > 0 && bar !== (SOLO_BARS[i - 1] ?? 0) + 1)) throw new Error(`the solo's bars are one run, not ${SOLO_BARS.join(', ')}`)
+    const beats = SONG.solo.reduce((sum, [, n]) => sum + n, 0)
+    if (beats > 4 * SOLO_BARS.length) throw new Error(`the solo lasts ${beats} beats, its bars ${4 * SOLO_BARS.length}`)
+  }
+  // The stop: from the intro to the drums bar.
+  const stopAt = bar => bar >= INTRO_BARS && bar < DRUMS_BAR
+  // How loud each plays, set so that the band sits against the voice as the
+  // rave band does (see bandByLine).
+  const GUITAR = 0.16
+  const BASS = 0.36
+  const KICK = 0.45
+  const SNARE = 0.4
+  const TOM = 0.4
+  const HAT = 0.06
+  const RIDE = 0.035
+  const CRASH = 0.08
+  const LEAD = 0.22
+  // The riff alone in the intro, a little louder, as a band's first notes are.
+  const INTRO = 2.2
+
+  // A filter of the cookbook, one sample at a time: a low pass, a high pass,
+  // or a peak of `db` around `f`.
+  function biquad(type, f, q, db = 0) {
+    const w = (2 * Math.PI * f) / SR
+    const cos = Math.cos(w)
+    const alpha = Math.sin(w) / (2 * q)
+    const A = Math.pow(10, db / 40)
+    const [b0, b1, b2, a0, a1, a2] =
+      type === 'lp'
+        ? [(1 - cos) / 2, 1 - cos, (1 - cos) / 2, 1 + alpha, -2 * cos, 1 - alpha]
+        : type === 'hp'
+          ? [(1 + cos) / 2, -(1 + cos), (1 + cos) / 2, 1 + alpha, -2 * cos, 1 - alpha]
+          : [1 + alpha * A, -2 * cos, 1 - alpha * A, 1 + alpha / A, -2 * cos, 1 - alpha / A]
+    let x1 = 0
+    let x2 = 0
+    let y1 = 0
+    let y2 = 0
+    return x => {
+      const y = (b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0
+      x2 = x1
+      x1 = x
+      y2 = y1
+      y1 = y
+      return y
+    }
+  }
+  // A string plucked, `len` samples of it: a burst of noise, softened by
+  // `dark` (0 to 1) as a pick nearer the neck would, running round a delay
+  // line one period long, averaged at each pass so its highs die first, and
+  // losing what lets it ring `t60` seconds.
+  function string(midi, len, t60, dark) {
+    const f = mtof(midi)
+    const period = Math.max(2, Math.round(SR / f - 0.5))
+    const loss = Math.pow(0.001, 1 / (f * t60))
+    const line = new Float32Array(period)
+    let soft = 0
+    let mean = 0
+    for (let i = 0; i < period; i++) {
+      soft += (1 - dark) * (rand() * 2 - 1 - soft)
+      line[i] = soft
+      mean += soft / period
+    }
+    for (let i = 0; i < period; i++) line[i] -= mean
+    const out = new Float32Array(len)
+    for (let n = 0, i = 0; n < len; n++) {
+      const next = i + 1 === period ? 0 : i + 1
+      out[n] = line[i]
+      line[i] = loss * 0.5 * (line[i] + line[next])
+      i = next
+    }
+    return out
+  }
+  // The amp and its cabinet, on a strike's samples in place. Palm-muted, darker before the drive.
+  function amp(x, drive, mute) {
+    const thin = biquad('hp', mute ? 60 : 110, 0.7)
+    const tone = biquad('lp', mute ? 2000 : 4500, 0.7)
+    const scoop = biquad('peak', 650, 0.9, -6)
+    const cone = biquad('lp', 3800, 0.9)
+    const cabinet = biquad('lp', 5500, 0.7)
+    const floor = biquad('hp', 70, 0.7)
+    for (let n = 0; n < x.length; n++) {
+      const driven = Math.tanh(2.2 * Math.tanh(tone(thin(x[n])) * drive)) * 0.8
+      x[n] = floor(cabinet(cone(scoop(driven))))
+    }
+    return x
+  }
+  // One strike of a rhythm guitar on a chord's strings: open, ringing until
+  // the hand stops them; palm-muted, short and dark.
+  function strike(t0, midis, dur, gain, pan, mute) {
+    const release = mute ? 0.01 : 0.04
+    const len = Math.round((dur + 6 * release) * SR)
+    const x = new Float32Array(len)
+    for (const midi of midis) {
+      const s = string(midi, len, mute ? 0.25 : 3, mute ? 0.55 : 0.1)
+      for (let n = 0; n < len; n++) x[n] += s[n]
+    }
+    amp(x, mute ? 5 : 8, mute)
+    const start = Math.round(t0 * SR)
+    const stop = Math.round(dur * SR)
+    for (let n = 0; n < len; n++) {
+      let env = clamp(n / (0.0008 * SR))
+      if (n > stop) env *= Math.exp(-(n - stop) / SR / release)
+      addStereo(start + n, x[n] * env * gain, pan, 0.12)
+    }
+  }
+  // Both guitars, the right a hair after the left; or the left alone.
+  function guitars(t0, midis, dur, gain, mute, both = true) {
+    strike(t0, midis, dur, gain, -0.75, mute)
+    if (both) strike(t0 + 0.004 + rand() * 0.008, midis, dur, gain, 0.75, mute)
+  }
+  // The bass: a thicker string, picked, a little driven, its highs cut.
+  function bass(t0, midi, dur, gain) {
+    const len = Math.round((dur + 0.08) * SR)
+    const s = string(midi, len, 1.5, 0.5)
+    const lows = biquad('lp', 1500, 0.7)
+    const rumble = biquad('hp', 35, 0.7)
+    const start = Math.round(t0 * SR)
+    const stop = Math.round(dur * SR)
+    for (let n = 0; n < len; n++) {
+      let y = Math.tanh(2.5 * lows(rumble(s[n])))
+      if (n > stop) y *= Math.exp(-(n - stop) / SR / 0.015)
+      addStereo(start + n, y * gain, 0, 0.02)
+    }
+  }
+  // The lead guitar plays `notes` from `t0`.
+  function lead(t0, notes, gain) {
+    const events = []
+    let t = t0
+    for (const [midi, beats, bend = 0] of notes) {
+      if (midi !== null) events.push({ midi, start: t, dur: beats * BEAT, bend })
+      t += beats * BEAT
+    }
+    const start = Math.round(t0 * SR)
+    const len = Math.round((t - t0 + 0.6) * SR)
+    const x = new Float32Array(len)
+    let ph = 0
+    let f = mtof(events[0]?.midi ?? 64)
+    events.forEach((e, k) => {
+      const next = events[k + 1]
+      const legato = next !== undefined && Math.abs(next.start - (e.start + e.dur)) < 1e-6
+      const from = Math.round((e.start - t0) * SR)
+      const to = Math.round((e.start + e.dur - t0) * SR)
+      const until = Math.min(len, to + (legato ? 0 : Math.round(0.08 * SR)))
+      const target = mtof(e.midi)
+      const prev = f
+      for (let n = from; n < until; n++) {
+        const tt = (n - from) / SR
+        let pitch = e.bend ? mtof(e.midi - e.bend * (1 - smoothstep(clamp(tt / 0.18)))) : prev * Math.pow(target / prev, smoothstep(clamp(tt / 0.02)))
+        if (e.dur > 0.4) pitch *= Math.pow(2, (28 * clamp((tt - 0.2) / 0.2) * Math.sin(2 * Math.PI * 5.5 * tt)) / 1200)
+        f = pitch
+        ph += f / SR
+        ph -= Math.floor(ph)
+        let env = clamp(tt / 0.003) * (0.75 + 0.25 * Math.exp(-tt * 12))
+        if (n >= to) env *= Math.exp(-(n - to) / SR / 0.015)
+        x[n] += ((2 * ph - 1) * 0.7 + (ph < 0.5 ? 0.3 : -0.3)) * env
+      }
+    })
+    amp(x, 12, false)
+    for (let n = 0; n < len; n++) addStereo(start + n, x[n] * gain, 0.2, 0.35)
+    // The echo, three sixteenths later and fading, on the other side.
+    const delay = Math.round(0.75 * BEAT * SR)
+    const echo = new Float32Array(len + 4 * delay)
+    for (let n = delay; n < echo.length; n++) echo[n] = (n - delay < len ? (x[n - delay] ?? 0) : 0) + 0.35 * (echo[n - delay] ?? 0)
+    for (let n = 0; n < echo.length; n++) addStereo(start + n, echo[n] * gain * 0.3, -0.5, 0.4)
+  }
+
+  // The kick: a sine falling to its thud, and the click of the beater.
+  function kick(t0, gain) {
+    const start = Math.round(t0 * SR)
+    const beater = biquad('hp', 3000, 0.7)
+    let ph = 0
+    for (let n = 0; n < 0.3 * SR; n++) {
+      const t = n / SR
+      ph += (2 * Math.PI * (50 + 120 * Math.exp(-t * 40))) / SR
+      const s = Math.sin(ph) * Math.exp(-t * 10) + beater(rand() * 2 - 1) * 0.8 * Math.exp(-t * 250)
+      addStereo(start + n, Math.tanh(s * 1.5) * gain * clamp((0.3 - t) / 0.02), 0, 0.04)
+    }
+  }
+  // The snare: its drum's two tones, and the wires' hiss, in a big room.
+  function snare(t0, gain) {
+    const start = Math.round(t0 * SR)
+    const wires = biquad('hp', 1200, 0.7)
+    const soft = biquad('lp', 6000, 0.7)
+    for (let n = 0; n < 0.35 * SR; n++) {
+      const t = n / SR
+      const body = (Math.sin(2 * Math.PI * 185 * t) * 0.6 + Math.sin(2 * Math.PI * 330 * t) * 0.3) * Math.exp(-t * 25)
+      const hiss = soft(wires(rand() * 2 - 1)) * 0.9 * Math.exp(-t * 14)
+      addStereo(start + n, Math.tanh((body + hiss) * 1.3) * gain, 0.05, 0.45)
+    }
+  }
+  // A tom: a sine falling a little to its pitch, and the stick.
+  function tom(t0, f, gain, pan) {
+    const start = Math.round(t0 * SR)
+    let ph = 0
+    for (let n = 0; n < 0.4 * SR; n++) {
+      const t = n / SR
+      ph += (2 * Math.PI * f * (1 + 0.5 * Math.exp(-t * 30))) / SR
+      const s = Math.sin(ph) * Math.exp(-t * 9) + (rand() * 2 - 1) * 0.15 * Math.exp(-t * 60)
+      addStereo(start + n, s * gain, pan, 0.3)
+    }
+  }
+  // The toms rolling down from `t0`, a sixteenth each, for `beats` beats.
+  function roll(t0, beats, gain) {
+    const steps = Math.round(beats * 4)
+    for (let k = 0; k < steps; k++) {
+      const u = k / Math.max(1, steps - 1)
+      tom(t0 + (k * BEAT) / 4, 200 * Math.pow(80 / 200, Math.floor(u * 3.99) / 3), gain * (0.7 + 0.3 * u), 0.5 - u)
+    }
+  }
+  // Metal: six square waves at clashing pitches and a hiss, its lows taken
+  // out; short for a hat, longer for the ride, longest for a crash.
+  const CLASH = [205.3, 304.4, 369.6, 522.7, 540, 800]
+  function cymbal(t0, gain, decay, pan, from, wet) {
+    const start = Math.round(t0 * SR)
+    const high = biquad('hp', from, 0.7)
+    const higher = biquad('hp', from, 0.7)
+    const phases = CLASH.map(() => rand())
+    for (let n = 0; n < decay * 6 * SR; n++) {
+      let m = 0
+      for (let k = 0; k < CLASH.length; k++) {
+        phases[k] += (CLASH[k] * 3.1) / SR
+        phases[k] -= Math.floor(phases[k])
+        m += phases[k] < 0.5 ? 1 : -1
+      }
+      const s = higher(high(m * 0.12 + (rand() * 2 - 1) * 0.5))
+      addStereo(start + n, s * Math.exp(-n / SR / decay) * gain, pan, wet)
+    }
+  }
+  const hat = (t, gain) => cymbal(t, gain, 0.03, 0.3, 8000, 0.08)
+  const ride = (t, gain) => cymbal(t, gain, 0.45, -0.35, 5000, 0.2)
+  const crash = (t, gain, pan) => cymbal(t, gain, 1.3, pan, 3500, 0.35)
+
+  // The guitars and the bass, chord by chord.
+  let previous = ''
+  SEGMENTS.forEach(({ name, beats, t0, bar }) => {
+    const [r] = CHORD[name]
+    const open = [r, r + 7, r + 12]
+    const chug = [r, r + 7]
+    const low = r - 12
+    const changed = name !== previous
+    previous = name
+    const bassed = bar >= BASS_BAR
+    if (bar === LAST_BAR) {
+      if (t0 === bar * BAR) {
+        guitars(t0, open, BAR + 1.2, GUITAR, false)
+        bass(t0, low, BAR + 1, BASS)
+      }
+      return
+    }
+    if (bar >= OUTRO_BAR) {
+      if (t0 === bar * BAR) {
+        guitars(t0, open, 2 * BEAT, GUITAR, false)
+        bass(t0, low, 2 * BEAT, BASS)
+      }
+      return
+    }
+    if (stopAt(bar) || isBreak(bar)) {
+      const building = isBreak(bar) && bar === (sectionOf(bar)?.to ?? 0) - 1 && partOf(bar + 1) === 'drop'
+      const ring = building ? Math.min(beats, 2) : beats
+      guitars(t0, open, ring * BEAT - 0.03, GUITAR, false)
+      if (bassed) bass(t0, low, ring * BEAT - 0.03, BASS)
+      for (let b = ring; b < beats; b += 0.5) {
+        const u = (b - ring) / Math.max(0.5, beats - ring - 0.5)
+        guitars(t0 + b * BEAT, open, 0.4 * BEAT, GUITAR * (0.6 + 0.4 * u), false)
+        bass(t0 + b * BEAT, low, 0.4 * BEAT, BASS)
+      }
+      return
+    }
+    if (isDrop(bar)) {
+      for (let b = 0; b < beats; b += 0.5) {
+        const on = b % 1 === 0
+        guitars(t0 + b * BEAT, open, 0.45 * BEAT, GUITAR * (on ? 1 : 0.8), false)
+        bass(t0 + b * BEAT, low, 0.45 * BEAT, BASS * (on ? 1 : 0.85))
+        if (on && inLastDrop(bar)) strike(t0 + b * BEAT, [r + 12, r + 19, r + 24], 0.9 * BEAT, GUITAR * 0.45, 0, false)
+      }
+      return
+    }
+    // The gallop, in the intro, the verses and under the solo.
+    for (let b = 0; b < beats; b++) {
+      const hits = beats - b >= 1 ? [[0, 0.45], [0.5, 0.22], [0.75, 0.22]] : [[0, 0.22], [0.25, 0.22]]
+      hits.forEach(([at, length], k) => {
+        const t = t0 + (b + at) * BEAT
+        const opened = changed && b === 0 && k === 0
+        const level = GUITAR * (bar < INTRO_BARS ? INTRO : 1) * (opened ? 1 : k === 0 ? 0.95 : 0.85)
+        guitars(t, opened ? open : chug, length * BEAT, level, !opened, bar > 0)
+        if (bassed) bass(t, low, length * BEAT, BASS * (k === 0 ? 1 : 0.85))
+      })
+    }
+  })
+
+  // The drums.
+  for (let bar = INTRO_BARS; bar < TOTAL_BARS; bar++) {
+    const t0 = bar * BAR
+    const beat = b => t0 + b * BEAT
+    if (bar === LAST_BAR) {
+      kick(t0, KICK)
+      crash(t0, CRASH, -0.4)
+      crash(t0 + 0.01, CRASH, 0.4)
+      continue
+    }
+    if (bar >= OUTRO_BAR) {
+      kick(t0, KICK)
+      snare(t0, SNARE)
+      crash(t0, CRASH, 0.4)
+      roll(beat(2), 2, TOM)
+      continue
+    }
+    if (stopAt(bar)) {
+      kick(t0, KICK)
+      crash(t0, CRASH, 0.4)
+      if (bar === DRUMS_BAR - 1) roll(beat(2), 2, TOM)
+      continue
+    }
+    const section = sectionOf(bar)
+    const first = bar === section?.from
+    if (isBreak(bar)) {
+      if (first) {
+        kick(t0, KICK)
+        crash(t0, CRASH, -0.4)
+      }
+      for (let b = 0; b < 4; b++) tom(beat(b), 80, TOM * 0.6, -0.3)
+      if (bar === (section?.to ?? 0) - 1 && partOf(bar + 1) === 'drop') for (let k = 0; k < 16; k++) snare(beat(k / 4), SNARE * (0.3 + 0.7 * (k / 15)))
+      continue
+    }
+    if (isDrop(bar)) {
+      const into = bar - (section?.from ?? bar)
+      if (into % 4 === 0) crash(t0, CRASH, into % 8 ? 0.4 : -0.4)
+      for (let k = 0; k < 16; k++) kick(beat(k / 4), KICK * (k % 4 === 0 ? 0.9 : 0.6))
+      snare(beat(1), SNARE)
+      snare(beat(3), SNARE)
+      for (let b = 0; b < 4; b++) ride(beat(b), RIDE)
+      continue
+    }
+    // The verses, and the solo on the ride.
+    if (first || bar === DRUMS_BAR) crash(t0, CRASH * 0.8, -0.4)
+    kick(beat(0), KICK)
+    kick(beat(2), KICK)
+    kick(beat(2.5), KICK * 0.8)
+    snare(beat(1), SNARE)
+    if (soloAt(bar)) for (let b = 0; b < 4; b++) ride(beat(b), RIDE)
+    else for (let k = 0; k < 8; k++) hat(beat(k / 2), HAT * (k % 2 ? 0.7 : 1))
+    const fill = bar === (section?.to ?? 0) - 1 && partOf(bar + 1) !== 'verse'
+    if (fill) for (let k = 0; k < 4; k++) snare(beat(3 + k / 4), SNARE * (0.55 + 0.15 * k))
+    else snare(beat(3), SNARE)
+  }
+
+  if (SONG.solo) lead((SOLO_BARS[0] ?? 0) * BAR, SONG.solo, LEAD)
+
+  // The voice off a wall, a moment later, left and right.
+  const slap = Math.round(0.11 * SR)
+  const other = Math.round(0.13 * SR)
+  for (let n = slap; n < N; n++) {
+    L[n] += voc[n - slap] * 0.1
+    if (n >= other) Rt[n] += voc[n - other] * 0.08
   }
 }
 

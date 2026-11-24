@@ -8,6 +8,7 @@ import { AUDIO as GO_LIVE_AUDIO, TIMING as GO_LIVE_TIMING } from './songs/go-liv
 import { AUDIO as HANA_DI_NOTTE_AUDIO, TIMING as HANA_DI_NOTTE_TIMING } from './songs/hana-di-notte'
 import { AUDIO as IN_PRINCIPIO_AUDIO, TIMING as IN_PRINCIPIO_TIMING } from './songs/in-principio'
 import { AUDIO as ODISSEA_AUDIO, TIMING as ODISSEA_TIMING } from './songs/odissea'
+import { AUDIO as SCRIVANIA_AUDIO, TIMING as SCRIVANIA_TIMING } from './songs/scrivania'
 import { AUDIO as SERENATA_AUDIO, TIMING as SERENATA_TIMING } from './songs/serenata'
 import { AUDIO as SO_DI_NON_SAPERE_AUDIO, TIMING as SO_DI_NON_SAPERE_TIMING } from './songs/so-di-non-sapere'
 import { AUDIO as TUTTO_PRONTO_AUDIO, TIMING as TUTTO_PRONTO_TIMING } from './songs/tutto-pronto'
@@ -65,7 +66,7 @@ export const partsOf = (song: Timing, part: Part) => sectionsOf(song).filter(s =
 // (its voice style). A song is rendered in the pairs its file in tools/songs
 // declares, and in no other: the menus offer exactly those, in this order.
 export type VoiceId = 'classico' | 'avanzato'
-export type SoundId = 'pop' | 'plettro' | 'dita' | 'rave' | 'happy' | 'romana' | 'dance'
+export type SoundId = 'pop' | 'plettro' | 'dita' | 'rave' | 'happy' | 'romana' | 'dance' | 'metal'
 export type Voices = Partial<Record<VoiceId, string>>
 export type Sounds = Partial<Record<SoundId, Voices>>
 export const VOICE_STYLES: readonly { id: VoiceId; label: string }[] = [
@@ -80,6 +81,7 @@ export const SOUND_PROFILES: readonly { id: SoundId; label: string }[] = [
   { id: 'happy', label: 'Happy' },
   { id: 'romana', label: 'Romana' },
   { id: 'dance', label: 'Dance' },
+  { id: 'metal', label: 'Metal' },
 ]
 
 // The collections (albums) the songs are gathered in, in the menu's order: the
@@ -101,7 +103,7 @@ export const COLLECTIONS: readonly { id: CollectionId; label: string; ambience: 
 ]
 
 // The sceneries of hooks/sets, by name.
-export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio' | 'batteria' | 'cutover' | 'venerdi' | 'favola' | 'meridiana' | 'domanda'
+export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio' | 'batteria' | 'cutover' | 'venerdi' | 'favola' | 'meridiana' | 'domanda' | 'scrivania'
 
 export type Song = Timing & {
   // Its address in the menus, in /canta and in the store: short, never reused.
@@ -121,6 +123,9 @@ export type Song = Timing & {
   // Whether the band nods in its drops: every Claude tips to one side on the
   // beat and stands straight again between the beats, all together.
   nod?: boolean
+  // Whether the band headbangs in its drops: every Claude bows on the beat,
+  // its head down to its legs, and straightens up between the beats.
+  headbang?: boolean
 }
 
 // The song for the day Claude Fable 5.2 came out, told as a fable, the band
@@ -195,6 +200,9 @@ export const SONGS: readonly Song[] = [
   // A dance song for the band's own club, in the manner of the eurodance of
   // the nineties: a Claude asks what love is, and the band nods to it.
   { id: 'dimmi-cose', title: "Dimmi cos'è", collection: 'band', scenery: 'domanda', audio: DIMMI_COSE_AUDIO, nod: true, ...DIMMI_COSE_TIMING },
+  // MDO's second song, rock in the manner of heavy metal, on Marco's own
+  // refrain: a desk on the desk, and the whole PC to use. The band headbangs.
+  { id: 'scrivania', title: 'La mia scrivania ha una scrivania', collection: 'mdo', scenery: 'scrivania', audio: SCRIVANIA_AUDIO, headbang: true, ...SCRIVANIA_TIMING },
 ]
 
 // The song with this id; when none is picked yet (a new install) or no song

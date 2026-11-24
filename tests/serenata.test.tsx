@@ -700,13 +700,13 @@ test('each album plays in its own ambience: the band in its club, HANA in a data
   // MDO's evening: wine walls, rose beams, flower crowns, a riser in the walls' wine.
   // In principio builds up its own way: bass at bar 6, a heartbeat from bar 8;
   // so does Centottanta: the kick from the first bar, the acid line at bar 2;
-  // and Dimmi cos'è, which has a test of its own;
+  // and Dimmi cos'è and La mia scrivania ha una scrivania, which have tests of their own;
   // every other song keeps the fixed form, and the stage follows each.
   const principio = SONGS.find(s => s.id === 'in-principio')!
   expect([principio.bassAt, principio.drumsAt]).toEqual([+(6 * principio.bar).toFixed(3), +(8 * principio.bar).toFixed(3)])
   const centottanta = SONGS.find(s => s.id === 'centottanta')!
   expect([centottanta.bassAt, centottanta.drumsAt]).toEqual([+(2 * centottanta.bar).toFixed(3), 0])
-  for (const song of SONGS.filter(s => s.id !== 'in-principio' && s.id !== 'dimmi-cose' && s.collection !== 'carica')) expect([song.bassAt, song.drumsAt]).toEqual([undefined, undefined])
+  for (const song of SONGS.filter(s => s.id !== 'in-principio' && s.id !== 'dimmi-cose' && s.id !== 'scrivania' && s.collection !== 'carica')) expect([song.bassAt, song.drumsAt]).toEqual([undefined, undefined])
   const mdo = stageOf('in-principio')
   expect(mdo).toContain(`begin="${(principio.drumsAt ?? 0).toFixed(2)}s"`)
   expect(mdo).toContain('url(#serataWall)')
@@ -795,8 +795,8 @@ test('Centottanta has a form of its own: two verses, a roll and a breakdown, thr
   const last = drops[2]!
   expect(stage).toContain(`values="0 0;-1.6 0.6;1.6 -0.6;0 0" dur="${(song.pulse ?? 0).toFixed(2)}s" begin="${last.start.toFixed(2)}s"`)
   expect(stage).toContain(`values="1.24;1;1" keyTimes="0;0.4;1" dur="${(song.pulse ?? 0).toFixed(2)}s" begin="${last.start.toFixed(2)}s" end="${last.end.toFixed(2)}s"`)
-  // Every song but Carica's, Roma's and Dimmi cos'è keeps the first form, as it always had.
-  for (const other of SONGS) expect(other.sections === undefined).toBe(other.collection !== 'carica' && other.collection !== 'roma' && other.id !== 'dimmi-cose')
+  // Every song but Carica's, Roma's, Dimmi cos'è and La mia scrivania ha una scrivania keeps the first form, as it always had.
+  for (const other of SONGS) expect(other.sections === undefined).toBe(other.collection !== 'carica' && other.collection !== 'roma' && other.id !== 'dimmi-cose' && other.id !== 'scrivania')
 })
 
 test('Carica has four songs: Centottanta, Cutover at 190, Venerdì played happy, and Fable 5.2', () => {
@@ -914,9 +914,9 @@ test('Roma has a song, Carpe diem: Horace in a house in Pompeii, played by the R
 
 test("Dimmi cos'è is a dance song for the band's own club: the kick from the first bar, the Claudes nodding in the drops", () => {
   const song = SONGS.find(s => s.id === 'dimmi-cose')!
-  // The last song of the band and of the list: every song before it keeps its number in /canta.
+  // The last song of the band, the fifteenth of the list: every song before it keeps its number in /canta.
   expect(songsIn('band').map(s => s.id)).toEqual(['serenata', 'canzone-2', 'canzone-3', 'dimmi-cose'])
-  expect(SONGS.at(-1)?.id).toBe('dimmi-cose')
+  expect(SONGS.findIndex(s => s.id === 'dimmi-cose')).toBe(14)
   expect(ambienceOf(song)).toBe('club')
   // At 124, in one sound and in the advanced voice: nothing to set.
   expect(song.bpm).toBe(124)
@@ -955,6 +955,52 @@ test("Dimmi cos'è is a dance song for the band's own club: the kick from the fi
   expect(rows.map(r => r.at)).toEqual([0, 3, 6, 9, 12, 15].map(i => song.lines[i]!.start))
   expect(rows.at(-1)!.at).toBeGreaterThanOrEqual(drops[1]!.start)
   expect(stage).toContain(`>?<set attributeName="opacity" to="0" begin="${answered.toFixed(2)}s"`)
+  expect(stage.length).toBeLessThan(131072)
+})
+
+test('La mia scrivania ha una scrivania is the rock song of MDO: the metal orchestra, a call to open it, a solo, the Claudes headbanging in the drops', () => {
+  const song = SONGS.find(s => s.id === 'scrivania')!
+  // The second song of MDO and the last of the list: every song before it keeps its number in /canta.
+  expect(songsIn('mdo').map(s => s.id)).toEqual(['in-principio', 'scrivania'])
+  expect(SONGS.at(-1)?.id).toBe('scrivania')
+  expect(ambienceOf(song)).toBe('serata')
+  // At 144, in the metal sound and in the advanced voice: nothing to set.
+  expect(song.bpm).toBe(144)
+  expect(soundsOf(song)).toEqual(['metal'])
+  expect(voicesOf(song, 'metal')).toEqual(['avanzato'])
+  expect(hasSettings(song, 'metal')).toBe(false)
+  // The riff alone; the bass with the call, at bar 2; the drums after it, at bar 4.
+  expect([song.bassAt, song.drumsAt]).toEqual([+(2 * song.bar).toFixed(3), +(4 * song.bar).toFixed(3)])
+  const sections = sectionsOf(song)
+  expect(sections.map(s => s.part)).toEqual(['intro', 'verse', 'break', 'drop', 'verse', 'verse', 'break', 'drop', 'outro'])
+  expect(song.lines).toHaveLength(19)
+  // The call opens it and comes back before the last refrain; the refrain is Marco's, its last PC held.
+  const words = song.lines.map(line => line.syls.map(s => s.text).join('').trim())
+  expect(words[0]).toBe('Clauddino babyyy… EMMEDIOOOO!')
+  expect(words.filter(w => w === words[0])).toHaveLength(2)
+  expect(words.filter(w => w === 'La mia scrivania ha una scrivania!')).toHaveLength(2)
+  expect(words.filter(w => w === 'posso usare, posso usare')).toHaveLength(2)
+  expect(words.at(-1)).toBe('tutto il mio PCCCCCCC!')
+  // The solo: four bars after the second verse, where no line is sung.
+  const solo = sections[5]!
+  expect(Math.abs(solo.end - solo.start - 4 * song.bar)).toBeLessThan(0.01)
+  expect(song.lines.some(line => line.start >= solo.start && line.start < solo.end)).toBe(false)
+  // The four Claudes headbang in the drops, on the beat; in no other song.
+  const stage = band(1, song)
+  const drops = partsOf(song, 'drop')
+  expect(stage.match(/values="1 0.7;1 1"/g)?.length).toBe(4)
+  expect(stage).toContain(`values="1 0.7;1 1" dur="${song.beat.toFixed(2)}s" begin="${drops.map(d => d.start.toFixed(2) + 's').join(';')}" end="${[drops[0]!.end, song.outroAt + 1].map(t => t.toFixed(2) + 's').join(';')}"`)
+  for (const other of SONGS.filter(s => s.id !== 'scrivania')) expect(band(1, other)).not.toContain('type="scale" values="1 0.7;1 1"')
+  // Its scenery: the signs, the cores on the wall, full in the drops; a desk
+  // in the desk's screen at each «scrivania» of the first refrain, and one
+  // more as the last refrain starts.
+  expect(stage).toContain('LA MIA SCRIVANIA')
+  expect(stage).toContain('>CPU<')
+  expect(stage).toContain('100%')
+  const refrain = song.lines.find(line => line.start >= song.finaleAt - 0.01)!
+  const scri = refrain.syls.filter(s => s.text === 'scri').map(s => s.start)
+  expect(scri).toHaveLength(2)
+  for (const t of [...scri, drops.at(-1)!.start]) expect(stage).toContain(`values="0;1.15;1" dur="0.5s" begin="${t.toFixed(2)}s"`)
   expect(stage.length).toBeLessThan(131072)
 })
 

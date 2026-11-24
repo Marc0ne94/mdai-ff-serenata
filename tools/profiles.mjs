@@ -11,7 +11,8 @@
 // played in Rome (the hydraulis, a water organ; the cithara; the cornu, a
 // round horn of natural notes; the tibia; tympanum, scabellum and cymbala); or
 // `dance`, eurodance (the kick on every beat, the bass off it, an organ riff,
-// strings, claps and hats).
+// strings, claps and hats); or `metal`, rock and heavy metal (two distorted
+// guitars, a bass, drums with a double kick, a lead guitar for the solo).
 export const PROFILES = {
   pop: { orchestra: 'pop' },
   plettro: { orchestra: 'antica', lyre: 'plettro' },
@@ -20,6 +21,7 @@ export const PROFILES = {
   happy: { orchestra: 'rave', mood: 'happy' },
   romana: { orchestra: 'romana' },
   dance: { orchestra: 'dance' },
+  metal: { orchestra: 'metal' },
 }
 
 // `classico`, the first voice, which sings the letters it knows and skips
