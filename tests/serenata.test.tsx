@@ -700,13 +700,13 @@ test('each album plays in its own ambience: the band in its club, HANA in a data
   // MDO's evening: wine walls, rose beams, flower crowns, a riser in the walls' wine.
   // In principio builds up its own way: bass at bar 6, a heartbeat from bar 8;
   // so does Centottanta: the kick from the first bar, the acid line at bar 2;
-  // and Dimmi cos'è and La mia scrivania ha una scrivania, which have tests of their own;
+  // and Dimmi cos'è and the rock songs of MDO, which have tests of their own;
   // every other song keeps the fixed form, and the stage follows each.
   const principio = SONGS.find(s => s.id === 'in-principio')!
   expect([principio.bassAt, principio.drumsAt]).toEqual([+(6 * principio.bar).toFixed(3), +(8 * principio.bar).toFixed(3)])
   const centottanta = SONGS.find(s => s.id === 'centottanta')!
   expect([centottanta.bassAt, centottanta.drumsAt]).toEqual([+(2 * centottanta.bar).toFixed(3), 0])
-  for (const song of SONGS.filter(s => s.id !== 'in-principio' && s.id !== 'dimmi-cose' && s.id !== 'scrivania' && s.collection !== 'carica')) expect([song.bassAt, song.drumsAt]).toEqual([undefined, undefined])
+  for (const song of SONGS.filter(s => s.id !== 'in-principio' && s.id !== 'dimmi-cose' && s.id !== 'scrivania' && s.id !== 'sap-in-ogni-casa' && s.collection !== 'carica')) expect([song.bassAt, song.drumsAt]).toEqual([undefined, undefined])
   const mdo = stageOf('in-principio')
   expect(mdo).toContain(`begin="${(principio.drumsAt ?? 0).toFixed(2)}s"`)
   expect(mdo).toContain('url(#serataWall)')
@@ -795,8 +795,8 @@ test('Centottanta has a form of its own: two verses, a roll and a breakdown, thr
   const last = drops[2]!
   expect(stage).toContain(`values="0 0;-1.6 0.6;1.6 -0.6;0 0" dur="${(song.pulse ?? 0).toFixed(2)}s" begin="${last.start.toFixed(2)}s"`)
   expect(stage).toContain(`values="1.24;1;1" keyTimes="0;0.4;1" dur="${(song.pulse ?? 0).toFixed(2)}s" begin="${last.start.toFixed(2)}s" end="${last.end.toFixed(2)}s"`)
-  // Every song but Carica's, Roma's, Dimmi cos'è and La mia scrivania ha una scrivania keeps the first form, as it always had.
-  for (const other of SONGS) expect(other.sections === undefined).toBe(other.collection !== 'carica' && other.collection !== 'roma' && other.id !== 'dimmi-cose' && other.id !== 'scrivania')
+  // Every song but Carica's, Roma's, Dimmi cos'è and the rock songs of MDO keeps the first form, as it always had.
+  for (const other of SONGS) expect(other.sections === undefined).toBe(other.collection !== 'carica' && other.collection !== 'roma' && other.id !== 'dimmi-cose' && other.id !== 'scrivania' && other.id !== 'sap-in-ogni-casa')
 })
 
 test('Carica has four songs: Centottanta, Cutover at 190, Venerdì played happy, and Fable 5.2', () => {
@@ -960,9 +960,9 @@ test("Dimmi cos'è is a dance song for the band's own club: the kick from the fi
 
 test('La mia scrivania ha una scrivania is the rock song of MDO: the metal orchestra, a call to open it, a solo, the Claudes headbanging in the drops', () => {
   const song = SONGS.find(s => s.id === 'scrivania')!
-  // The second song of MDO and the last of the list: every song before it keeps its number in /canta.
-  expect(songsIn('mdo').map(s => s.id)).toEqual(['in-principio', 'scrivania'])
-  expect(SONGS.at(-1)?.id).toBe('scrivania')
+  // The second song of MDO, the sixteenth of the list: every song before it keeps its number in /canta.
+  expect(songsIn('mdo').map(s => s.id).slice(0, 2)).toEqual(['in-principio', 'scrivania'])
+  expect(SONGS.findIndex(s => s.id === 'scrivania')).toBe(15)
   expect(ambienceOf(song)).toBe('serata')
   // At 144, in the metal sound and in the advanced voice: nothing to set.
   expect(song.bpm).toBe(144)
@@ -985,12 +985,12 @@ test('La mia scrivania ha una scrivania is the rock song of MDO: the metal orche
   const solo = sections[5]!
   expect(Math.abs(solo.end - solo.start - 4 * song.bar)).toBeLessThan(0.01)
   expect(song.lines.some(line => line.start >= solo.start && line.start < solo.end)).toBe(false)
-  // The four Claudes headbang in the drops, on the beat; in no other song.
+  // The four Claudes headbang in the drops, on the beat; in no song but the rock ones of MDO.
   const stage = band(1, song)
   const drops = partsOf(song, 'drop')
   expect(stage.match(/values="1 0.7;1 1"/g)?.length).toBe(4)
   expect(stage).toContain(`values="1 0.7;1 1" dur="${song.beat.toFixed(2)}s" begin="${drops.map(d => d.start.toFixed(2) + 's').join(';')}" end="${[drops[0]!.end, song.outroAt + 1].map(t => t.toFixed(2) + 's').join(';')}"`)
-  for (const other of SONGS.filter(s => s.id !== 'scrivania')) expect(band(1, other)).not.toContain('type="scale" values="1 0.7;1 1"')
+  for (const other of SONGS.filter(s => !s.headbang)) expect(band(1, other)).not.toContain('type="scale" values="1 0.7;1 1"')
   // Its scenery: the signs, the cores on the wall, full in the drops; a desk
   // in the desk's screen at each «scrivania» of the first refrain, and one
   // more as the last refrain starts.
@@ -1001,6 +1001,49 @@ test('La mia scrivania ha una scrivania is the rock song of MDO: the metal orche
   const scri = refrain.syls.filter(s => s.text === 'scri').map(s => s.start)
   expect(scri).toHaveLength(2)
   for (const t of [...scri, drops.at(-1)!.start]) expect(stage).toContain(`values="0;1.15;1" dur="0.5s" begin="${t.toFixed(2)}s"`)
+  expect(stage.length).toBeLessThan(131072)
+})
+
+test('SAP in ogni casa is the second rock song of MDO: the call opens and closes it, SAP AT HOME is chanted in three drops, the house lights up', () => {
+  const song = SONGS.find(s => s.id === 'sap-in-ogni-casa')!
+  // The third song of MDO and the last of the list: every song before it keeps its number in /canta.
+  expect(songsIn('mdo').map(s => s.id)).toEqual(['in-principio', 'scrivania', 'sap-in-ogni-casa'])
+  expect(SONGS.at(-1)?.id).toBe('sap-in-ogni-casa')
+  expect(ambienceOf(song)).toBe('serata')
+  // At 152, in the metal sound and in the advanced voice: nothing to set.
+  expect(song.bpm).toBe(152)
+  expect(soundsOf(song)).toEqual(['metal'])
+  expect(voicesOf(song, 'metal')).toEqual(['avanzato'])
+  expect(hasSettings(song, 'metal')).toBe(false)
+  // The riff alone; the bass at bar 2; the drums with the call, at bar 4.
+  expect([song.bassAt, song.drumsAt]).toEqual([+(2 * song.bar).toFixed(3), +(4 * song.bar).toFixed(3)])
+  const sections = sectionsOf(song)
+  expect(sections.map(s => s.part)).toEqual(['intro', 'verse', 'break', 'drop', 'verse', 'break', 'drop', 'verse', 'drop', 'outro'])
+  expect(song.lines).toHaveLength(21)
+  // Marco's call opens it and closes it; SAP AT HOME is chanted twice in each long refrain and once in the last.
+  const words = song.lines.map(line => line.syls.map(s => s.text).join('').trim())
+  expect(words[0]).toBe('Clauddino babyyyy… EMMEDIOOOOO!')
+  expect(words.at(-1)).toBe(words[0])
+  expect(words.filter(w => w === 'SAP AT HOME! SAP AT HOME!')).toHaveLength(5)
+  // The solo: the four bars between the second refrain and the last, where no line is sung.
+  const solo = sections[7]!
+  expect(Math.abs(solo.end - solo.start - 4 * song.bar)).toBeLessThan(0.01)
+  expect(song.lines.some(line => line.start >= solo.start && line.start < solo.end)).toBe(false)
+  // The four Claudes headbang in its drops, on the beat.
+  const stage = band(1, song)
+  const drops = partsOf(song, 'drop')
+  expect(stage.match(/type="scale" values="1 0.7;1 1"/g)?.length).toBe(4)
+  expect(stage).toContain(`values="1 0.7;1 1" dur="${song.beat.toFixed(2)}s" begin="${drops.map(d => d.start.toFixed(2) + 's').join(';')}" end="${[drops[0]!.end, drops[1]!.end, song.outroAt + 1].map(t => t.toFixed(2) + 's').join(';')}"`)
+  // Its scenery: the signs; each of the house's apps lit when a line sings of
+  // it; the box of milk at the door two beats into the MRP line.
+  expect(stage).toContain('SAP IN OGNI CASA')
+  expect(stage).toContain('>HOME<')
+  const lineWith = (word: string) => song.lines.find(line => line.syls.map(s => s.text).join('').toLowerCase().includes(word))!
+  for (const [label, word] of [['SPESA', 'spesa'], ['BUCATO', 'workflow'], ['MUTUO', 'mutuo'], ['PAGHETTA', 'payroll']] as const) {
+    expect(stage).toContain(`>${label}<set attributeName="fill" to="#ffffff" begin="${lineWith(word).start.toFixed(2)}s" fill="freeze"/>`)
+  }
+  expect(stage).toContain(`values="0;1.2;1" dur="0.5s" begin="${(lineWith('mrp').start + 2 * song.beat).toFixed(2)}s"`)
+  expect(stage).toContain('>LATTE<')
   expect(stage.length).toBeLessThan(131072)
 })
 

@@ -8,6 +8,7 @@ import { AUDIO as GO_LIVE_AUDIO, TIMING as GO_LIVE_TIMING } from './songs/go-liv
 import { AUDIO as HANA_DI_NOTTE_AUDIO, TIMING as HANA_DI_NOTTE_TIMING } from './songs/hana-di-notte'
 import { AUDIO as IN_PRINCIPIO_AUDIO, TIMING as IN_PRINCIPIO_TIMING } from './songs/in-principio'
 import { AUDIO as ODISSEA_AUDIO, TIMING as ODISSEA_TIMING } from './songs/odissea'
+import { AUDIO as SAP_IN_OGNI_CASA_AUDIO, TIMING as SAP_IN_OGNI_CASA_TIMING } from './songs/sap-in-ogni-casa'
 import { AUDIO as SCRIVANIA_AUDIO, TIMING as SCRIVANIA_TIMING } from './songs/scrivania'
 import { AUDIO as SERENATA_AUDIO, TIMING as SERENATA_TIMING } from './songs/serenata'
 import { AUDIO as SO_DI_NON_SAPERE_AUDIO, TIMING as SO_DI_NON_SAPERE_TIMING } from './songs/so-di-non-sapere'
@@ -103,7 +104,7 @@ export const COLLECTIONS: readonly { id: CollectionId; label: string; ambience: 
 ]
 
 // The sceneries of hooks/sets, by name.
-export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio' | 'batteria' | 'cutover' | 'venerdi' | 'favola' | 'meridiana' | 'domanda' | 'scrivania'
+export type SceneryId = 'rosa' | 'codice' | 'golive' | 'tempio' | 'stoa' | 'hana' | 'delfi' | 'liceo' | 'principio' | 'batteria' | 'cutover' | 'venerdi' | 'favola' | 'meridiana' | 'domanda' | 'scrivania' | 'casa'
 
 export type Song = Timing & {
   // Its address in the menus, in /canta and in the store: short, never reused.
@@ -203,6 +204,9 @@ export const SONGS: readonly Song[] = [
   // MDO's second song, rock in the manner of heavy metal, on Marco's own
   // refrain: a desk on the desk, and the whole PC to use. The band headbangs.
   { id: 'scrivania', title: 'La mia scrivania ha una scrivania', collection: 'mdo', scenery: 'scrivania', audio: SCRIVANIA_AUDIO, headbang: true, ...SCRIVANIA_TIMING },
+  // MDO's third song, rock again, on Marco's idea: SAP is in every company,
+  // so why not in every home? The band headbangs.
+  { id: 'sap-in-ogni-casa', title: 'SAP in ogni casa', collection: 'mdo', scenery: 'casa', audio: SAP_IN_OGNI_CASA_AUDIO, headbang: true, ...SAP_IN_OGNI_CASA_TIMING },
 ]
 
 // The song with this id; when none is picked yet (a new install) or no song
